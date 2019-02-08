@@ -1,0 +1,8 @@
+[package]
+name = "steganer"
+version = "0.1.0"
+authors = ["dante-signal31 <dante.signal31@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+argparse = "0.2.2"
