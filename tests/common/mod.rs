@@ -1,4 +1,4 @@
-use std::fs::remove_file;
+use std::fs::{remove_file, copy};
 use std::io::Error;
 use std::path::Path;
 use tempfile::{tempdir, TempDir};
@@ -10,13 +10,14 @@ use tempfile::{tempdir, TempDir};
 /// manually generated temp folder.
 ///
 /// # Example
-/// [...]
+/// ```
 /// {
 ///     let test_folder = TestEnvironment::new();
 ///     let test_folder_path = test_folder.path();
 ///     // Do your operations in test folder.
 /// } // Here test folder is automatically removed.
-struct TestEnvironment {
+/// ```
+pub struct TestEnvironment {
     folder: TempDir,
 }
 
@@ -39,8 +40,8 @@ impl TestEnvironment {
 /// Returns Ok(()) if sucessful and std::io::Error if not.
 ///
 /// # Parameters:
-/// * file_path: String with the absolute path to file.
-pub fn delete_file(file_path: String)-> Result<(), Error>{
+/// * file_path: &str with the absolute path to file.
+pub fn delete_file(file_path: &str)-> Result<(), Error>{
     remove_file(file_path)?;
     Ok(())
 }
@@ -54,12 +55,37 @@ pub fn delete_file(file_path: String)-> Result<(), Error>{
 /// * ignore_missing: If true does not return an error if any of files actually does not exists.
 pub fn delete_files(files: Vec<String>, ignore_missing: bool)-> Result<(), Error>{
     for file in files{
-        match delete_file(file){
+        match delete_file(file.as_str()){
             Ok(_)=> { continue; },
             Err(e)=> {
                 if ignore_missing { continue; } else { Err(e) }
             }
         };
+    }
+    Ok(())
+}
+
+/// Copy an specific file.
+///
+/// Returns an Ok(u64) with copied file size if operation was successful. Otherwise
+/// it returns an io::Error.
+///
+/// # Parameters:
+/// * source_file_path: &str with absolute pathname to original file.
+/// * destination_file_path: &str with absolute pathname to copied file.
+pub fn copy_file(source_file_path: &str, destination_file_path: &str)-> Result<u64, Error>{
+    Ok(copy(source_file_path, destination_file_path)?)
+}
+
+/// Copy all files in an given list to a given destination folder. Original file names
+/// are kept untouched.
+pub fn copy_files(files: Vec<String>, destination_folder_path: &str)-> Result<(), Error>{
+    for file in files{
+        let path = Path::new(file);
+        if let Some(filename) = path.file_name() {
+            let destination_filename = Path::new(destination_folder_path).join(filename);
+            copy_file(file.as_str(), destination_filename.as_path().to_str()?)?;
+        }
     }
     Ok(())
 }
