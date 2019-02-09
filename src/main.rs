@@ -3,11 +3,14 @@
 
 mod argparser;
 mod configuration;
+mod lib;
 
 use crate::argparser::parse_arguments;
+//use crate::lib::run;
 
 fn main() {
-    let config = parse_arguments().expect("Error parsing arguments");
+    let config = parse_arguments();
     println!("Parsed data: {:?}", config);
+//    run(config);
 }
 
