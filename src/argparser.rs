@@ -12,7 +12,7 @@ pub fn parse_arguments()-> Configuration{
         // wouldn't be able move it out through Ok(configuration).
         let mut parser = ArgumentParser::new();
         parser.set_description("Hide a file inside another... or recovers it.");
-        parser.refer(&mut configuration.file_hidden)
+        parser.refer(&mut configuration.hidden_file)
             .add_argument("file_hidden", Store, "File to hide or to be extracted.");
         parser.refer(&mut configuration.host_file)
             .add_argument("host_file", Store, "Container file for hidden file.");

@@ -8,7 +8,7 @@ use steganer::run;
 use steganer::create_configuration;
 use common::{copy_files, TestEnvironment};
 
-const FILE_HIDDEN: String = "resources/loren.txt".to_owned();
+const HIDDEN_FILE: String = "resources/loren.txt".to_owned();
 const HOST_FILE: String = "resources/lena.png".to_owned();
 const HOST_FILE_LOADED: String = "lena_steg.png".to_owned();
 const FILE_RECOVERED: String = "lena_recovered.txt".to_owned();
@@ -19,7 +19,7 @@ fn test_simple_compression() {
     let test_folder = TestEnvironment::new();
     let test_folder_path = test_folder.path();
     let current_folder = Path::new(current_dir());
-    let file_hidden_absolute_path = current_folder.join(FILE_HIDDEN).into_os_string().into_string()
+    let file_hidden_absolute_path = current_folder.join(HIDDEN_FILE).into_os_string().into_string()
         .expect("File to hide name has non valid unicode characters.");
     let host_file_absolute_path = current_folder.join(HOST_FILE).into_os_string().into_string()
         .expect("Host filen name has not valid unicode characters.");
@@ -29,9 +29,9 @@ fn test_simple_compression() {
 
     // Start test.
     // Check compression does not raise any error.
-    let compression_config = create_configuration(FILE_HIDDEN,
-                                          HOST_FILE,
-                                          false);
+    let compression_config = create_configuration(HIDDEN_FILE,
+                                                  HOST_FILE,
+                                                  false);
     assert_eq!(Ok(()),run(compression_config));
 
     // Check decompression does not raise any error.

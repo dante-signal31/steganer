@@ -4,9 +4,9 @@ use std::error::Error;
 /// Main function in steganer. It runs its main logic.
 pub fn run(config: Configuration)-> Result<(), Box<dyn Error>>{
     if config.extract {
-        extract(config)
+        extract(config.hidden_file, config.host_file)
     } else {
-        hide(config)
+        hide(config.hidden_file, config.host_file)
     }
 }
 
@@ -14,14 +14,14 @@ pub fn run(config: Configuration)-> Result<(), Box<dyn Error>>{
 ///
 /// This function is only useful for integration tests in order to create configurations to test
 /// run function.
-pub fn create_configuration(file_hidden: String, host_file: String, extract: bool)-> Configuration {
-    Configuration::new(file_hidden, host_file, extract)
+pub fn create_configuration(hidden_file: String, host_file: String, extract: bool)-> Configuration {
+    Configuration::new(hidden_file, host_file, extract)
 }
 
-fn extract(config: Configuration)-> Result<(), Box<dyn Error>>{
+fn extract(hidden_file: String, host_file: String)-> Result<(), Box<dyn Error>>{
     Ok(())
 }
 
-fn hide(config: Configuration)-> Result<(), Box<dyn Error>>{
+fn hide(hidden_file: String, host_file: String)-> Result<(), Box<dyn Error>>{
     Ok(())
 }
