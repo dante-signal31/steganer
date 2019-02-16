@@ -18,6 +18,8 @@ pub fn parse_arguments()-> Configuration{
             .add_argument("host_file", Store, "Container file for hidden file.");
         parser.refer(&mut configuration.extract)
             .add_option(&["-x", "--extract"], StoreTrue, "Extract file.");
+        parser.refer(&mut configuration.chunck_size)
+            .add_option(&["-s", "--size"], Store, "How many bits to hide in each selected pixel (DEFAULT=1, MAXIMUM=64)");
         parser.parse_args_or_exit();
     }
     configuration

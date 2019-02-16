@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 argparse = "0.2.2"
 tempfile = "3"
+bitreader = "0.3.1"

@@ -1,12 +1,10 @@
-mod common;
-
 use std::env::current_dir;
 use std::fs::read;
 use std::path::Path;
 
 use steganer::run;
 use steganer::create_configuration;
-use common::{copy_files, TestEnvironment};
+use steganer::test_common::{copy_files, TestEnvironment};
 
 const HIDDEN_FILE: String = "resources/loren.txt".to_owned();
 const HOST_FILE: String = "resources/lena.png".to_owned();
@@ -31,8 +29,9 @@ fn test_simple_compression() {
     // Check compression does not raise any error.
     let compression_config = create_configuration(HIDDEN_FILE,
                                                   HOST_FILE,
-                                                  false);
-    assert_eq!(Ok(()),run(compression_config));
+                                                  false,
+                                                  4);
+    assert_eq!(Ok(()),run(&compression_config));
 
     // Check decompression does not raise any error.
     let recovered_file_absolute_path = test_folder_path.join(FILE_RECOVERED).into_os_string().into_string()
@@ -41,8 +40,9 @@ fn test_simple_compression() {
         .expect("Error generating host file loaded absolute path");
     let extraction_config = create_configuration(recovered_file_absolute_path,
                                                  host_file_loaded_absolute_path,
-                                                 true);
-    assert_eq!(Ok(()), run(extraction_config));
+                                                 true,
+                                                 4);
+    assert_eq!(Ok(()), run(&extraction_config));
 
     // Check what we recovered is what we hid.
     let original_content = read(file_hidden_absolute_path)

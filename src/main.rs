@@ -3,7 +3,9 @@
 
 mod argparser;
 mod configuration;
+mod filereader;
 mod lib;
+mod test_common;
 
 use crate::argparser::parse_arguments;
 //use crate::lib::run;

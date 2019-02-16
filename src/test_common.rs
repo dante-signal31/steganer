@@ -1,6 +1,7 @@
 use std::fs::{remove_file, copy};
-use std::io::Error;
+use std::io;
 use std::path::Path;
+
 use tempfile::{tempdir, TempDir};
 
 /// Context manager like struct to create temporal folder to perform tests inside.
@@ -41,7 +42,7 @@ impl TestEnvironment {
 ///
 /// # Parameters:
 /// * file_path: &str with the absolute path to file.
-pub fn delete_file(file_path: &str)-> Result<(), Error>{
+pub fn delete_file(file_path: &str)-> Result<(), io::Error>{
     remove_file(file_path)?;
     Ok(())
 }
@@ -53,12 +54,12 @@ pub fn delete_file(file_path: &str)-> Result<(), Error>{
 /// # Parameters:
 /// * files: Vector with filepath list to remove.
 /// * ignore_missing: If true does not return an error if any of files actually does not exists.
-pub fn delete_files(files: Vec<String>, ignore_missing: bool)-> Result<(), Error>{
+pub fn delete_files(files: Vec<String>, ignore_missing: bool)-> Result<(), io::Error>{
     for file in files{
         match delete_file(file.as_str()){
             Ok(_)=> { continue; },
             Err(e)=> {
-                if ignore_missing { continue; } else { Err(e) }
+                if ignore_missing { continue; } else { e }
             }
         };
     }
@@ -73,18 +74,19 @@ pub fn delete_files(files: Vec<String>, ignore_missing: bool)-> Result<(), Error
 /// # Parameters:
 /// * source_file_path: &str with absolute pathname to original file.
 /// * destination_file_path: &str with absolute pathname to copied file.
-pub fn copy_file(source_file_path: &str, destination_file_path: &str)-> Result<u64, Error>{
+pub fn copy_file(source_file_path: &str, destination_file_path: &str)-> Result<u64, io::Error>{
     Ok(copy(source_file_path, destination_file_path)?)
 }
 
 /// Copy all files in an given list to a given destination folder. Original file names
 /// are kept untouched.
-pub fn copy_files(files: Vec<String>, destination_folder_path: &str)-> Result<(), Error>{
+pub fn copy_files(files: Vec<String>, destination_folder_path: &str)-> Result<(), io::Error>{
     for file in files{
-        let path = Path::new(file);
+        let path = Path::new(&file);
         if let Some(filename) = path.file_name() {
             let destination_filename = Path::new(destination_folder_path).join(filename);
-            copy_file(file.as_str(), destination_filename.as_path().to_str()?)?;
+            copy_file(file.as_str(), destination_filename.as_path().to_str()
+                .expect("Destination filen name for copy has non valid unicode characters."))?;
         }
     }
     Ok(())
