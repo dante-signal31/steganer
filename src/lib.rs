@@ -1,7 +1,7 @@
-mod configuration;
-mod filereader;
+pub mod argparser;
+pub mod configuration;
+pub mod filereader;
 pub mod test_common;
-
 
 use std::error::Error;
 use std::fs::File;
