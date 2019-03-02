@@ -182,7 +182,7 @@ mod tests {
         wtr.write_u32::<NativeEndian>(expected_chunk)
             .expect("Error writing chunk bigger than 8.");
         // expected_int = 0b0000_1101_0010
-        expected_int = normalize(bytes_to_u32(wtr), 12);
+        expected_int = normalize(bytes_to_u32(wtr), 12+4);
         // chunk_data = 0b1101_0010_0000
         assert_eq!(expected_int, chunk.data);
     }
