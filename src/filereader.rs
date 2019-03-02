@@ -74,7 +74,7 @@ mod tests {
     use super::super::test_common::TestEnvironment;
     use std::path::Path;
     use std::io::Cursor;
-    use byteorder::{NativeEndian, ReadBytesExt};
+    use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
     const MESSAGE: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, \
     sed eiusmod tempor incidunt ut labore et dolore magna aliqua.";
     const SOURCE_FILE: &str = "source.txt";
@@ -87,6 +87,24 @@ mod tests {
         source_file.write_all(file_content.as_bytes())
             .expect("Error populating test source file.");
         source_path
+    }
+
+    /// Convert a vector of 4 bytes to u32.
+    ///
+    /// It assumes those bytes are in Big Endian order (natural order).
+    fn bytes_to_u32(bytes: Vec<u8>)-> u32 {
+        assert_eq!(bytes.len(), 4);
+        ((bytes[0] as u32) << 24) +
+            ((bytes[1] as u32) << 16) +
+            ((bytes[2] as u32) <<  8) +
+            ((bytes[3] as u32) <<  0)
+
+    }
+
+    /// Justify to right the first "size" bits.
+    fn normalize(data: u32, size: u8)-> u32{
+        let shift = 32 - size;
+        data >> shift
     }
 
     #[test]
@@ -127,24 +145,45 @@ mod tests {
         let mut chunk = reader.next()
             .expect("Error reading chunk"); // "L" and upper half of "o".
         let mut expected_chunk_vec = "Lo".to_owned().into_bytes();
+        // rdr = [0b0100_1100, 0b0110_1111, 0b0000_0000, 0b0000_0000] --> Lo
         let mut rdr = Cursor::new(vec!(expected_chunk_vec[0],
                                         expected_chunk_vec[1],
                                         0 as u8,
                                         0 as u8));
+        // expected_chunk = 0b0110_1111_0100_1100 --> On Intel: Little-Endian: oL
         let mut expected_chunk= rdr.read_u32::<NativeEndian>()
             .expect("Error reading chunk bigger than 8");
-        expected_chunk = expected_chunk & 0xFFF0;
-        expected_chunk = expected_chunk >> 4;
-        assert_eq!(expected_chunk, chunk.data);
+        // expected_chunk = 0b0110_0000_0100_1100
+        expected_chunk = expected_chunk & 0xF0FF;
+        let mut wtr: Vec<u8> = Vec::new();
+        // wtr = [0100_1100, 0110_0000, 0, 0]
+        wtr.write_u32::<NativeEndian>(expected_chunk)
+            .expect("Error writing chunk bigger than 8.");
+        let mut expected_int = normalize(bytes_to_u32(wtr), 12);
+        // expected_int = 0b0100_1100_0110_0000_0000_0000_0000_0000
+        assert_eq!(expected_int, chunk.data);
         reader.next(); // Lower half of "o" and "r".
         reader.next(); // "e" and upper half of "m".
         chunk = reader.next()
-            .expect("Error reading chunk"); // Lower half "m" and " "
+            .expect("Error reading chunk"); // Lower half "m" and " " --> 0b1101_0010_0000
+        // expected_chunk_vec = [0b0110_1101, 0b0010_0000]
         expected_chunk_vec = "m ".to_owned().into_bytes();
-        rdr = Cursor::new(expected_chunk_vec);
-        let mut expected_chunk= rdr.read_u32::<NativeEndian>()
+        rdr = Cursor::new(vec!(expected_chunk_vec[0],
+                               expected_chunk_vec[1],
+                               0 as u8,
+                               0 as u8));
+        // expected_chunk = 0b0010_0000_0110_1101
+        expected_chunk= rdr.read_u32::<NativeEndian>()
             .expect("Error reading chunk bigger than 8");
-        expected_chunk = expected_chunk & 0x0FFF;
-        assert_eq!(expected_chunk, chunk.data);
+        // expected_chunk = 0b0010_0000_0000_1101
+        expected_chunk = expected_chunk & 0xFF0F;
+        wtr = Vec::new();
+        // wtr = [0000_1101, 0010_0000, 0, 0]
+        wtr.write_u32::<NativeEndian>(expected_chunk)
+            .expect("Error writing chunk bigger than 8.");
+        // expected_int = 0b0000_1101_0010
+        expected_int = normalize(bytes_to_u32(wtr), 12);
+        // chunk_data = 0b1101_0010_0000
+        assert_eq!(expected_int, chunk.data);
     }
 }
