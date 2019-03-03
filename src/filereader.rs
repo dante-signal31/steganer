@@ -1,11 +1,20 @@
+/// Module to read file to hide contents.
+///
+/// Thanks to ContentReader type you can get an iterator to read a file to hide a get its bits
+/// in predefined bunches. Every bunch of bits are returned inside a Chunk type.
+///
 use std::fs::File;
 use std::io::{BufReader, Read, Write, Error};
 use std::iter::Iterator;
 use bitreader::BitReader;
 use std::path::PathBuf;
-//use std::io::BufReader;
 
-
+/// Bits read from files to be hidden are stored at Chunks.
+///
+/// # Properties:
+/// * data: (u32) Every Chunks stores a maximum of 32 read bits at this property "data", those bits are
+/// at natural order (Big Endian) and justified to right.
+/// * order: (u64) An index about relative position of this chunk at file to be hidden.
 pub struct Chunk {
     pub data: u32,
     pub order: u64,
@@ -18,6 +27,14 @@ impl Chunk {
     }
 }
 
+/// Wrapper around file contents.
+///
+/// Once this type is created with its new() method, file is automatically read and its contents
+/// is placed at "content" attribute.
+///
+/// # Properties:
+/// * source: (File) File to be read.
+/// * content: (Vec\<u8>) Vector of bytes with read content.
 struct FileContent {
     source: File,
     content: Vec<u8>,
@@ -37,6 +54,14 @@ impl FileContent {
     }
 }
 
+/// ContentReader gives you an iterator to read a FileContent data.
+///
+/// Iterator returns a Chunk Type with bit read in every read iteration.
+///
+/// # Properties:
+/// * bit_reader: (BitReader) BitReader type to read bits alone.
+/// * chunk_size: (u8) Amount of bits to get in each iterator round.
+/// * position: (u64) Index about how many read rounds we've done using iterator.
 struct ContentReader<'a> {
     bit_reader: BitReader<'a>,
     chunk_size: u8,
@@ -89,6 +114,18 @@ mod tests {
         source_path
     }
 
+    /// Populate a test file in a temporary folder.
+    ///
+    /// # Returns:
+    /// * PathBuf: Path to created temporary file. Includes folder path and file name.
+    /// * TesEnvironment: Handle to temporary folder. Keep it in scope, if it leaves from scope then
+    ///temporary folder  is removed.
+    fn get_temporary_test_file()-> (PathBuf, TestEnvironment) {
+        let test_env = TestEnvironment::new();
+        let source_path = populate_test_file(&test_env);
+        (source_path, test_env)
+    }
+
     /// Convert a vector of 4 bytes to u32.
     ///
     /// It assumes those bytes are in Big Endian order (natural order).
@@ -102,16 +139,32 @@ mod tests {
     }
 
     /// Justify to right the first "size" bits.
-    fn normalize(data: u32, size: u8)-> u32{
+    ///
+    /// Be aware that even chunks may have some zeroed bits at the very beginning, so we should
+    /// shift less positions to justify to right.
+    ///
+    /// # Parameters:
+    /// * data: Data chunk stored in an u32.
+    /// * size: Actual sze in bits of data chunk.
+    /// * odd: True if this datachunk was read at an odd position.
+    ///
+    /// # Returns:
+    /// * u32: Data chunk stored in an u32 were bits were justified at right.
+    fn normalize(data: u32, size: u8, odd: bool)-> u32{
         let shift = 32 - size;
-        data >> shift
+        let remainder = size % 8;
+        if odd {
+            data >> shift
+        } else {
+            data >> shift - remainder
+        }
+
     }
 
     #[test]
     // Test iteration with chunks smaller than 8 bits.
-    fn test_iterator_next_under_8() {
-        let test_env = TestEnvironment::new();
-        let source_path = populate_test_file(&test_env);
+    fn test_iterator_next_under_8() { ;
+        let ( source_path,test_env) = get_temporary_test_file();
         let file_content = FileContent::new(source_path.to_str()
             .expect("Source file name contains odd characters."))
             .expect("Error getting file contents");
@@ -120,6 +173,7 @@ mod tests {
         let mut chunk: Chunk = reader.next()
             .expect("Error reading chunk"); // Upper half of "L".
         let mut expected_chunk = "L".to_owned().as_bytes()[0] as u32;
+        // Remove lower half of "L".
         expected_chunk = expected_chunk & 0xF0;
         expected_chunk = expected_chunk >> 4;
         assert_eq!(expected_chunk, chunk.data);
@@ -135,8 +189,7 @@ mod tests {
     #[test]
     // Test iteration with chunks bigger than 8 bits.
     fn test_iterator_next_over_8() {
-        let test_env = TestEnvironment::new();
-        let source_path = populate_test_file(&test_env);
+        let ( source_path,test_env) = get_temporary_test_file();
         let file_content = FileContent::new(source_path.to_str()
             .expect("Source file name contains odd characters."))
             .expect("Error getting file contents");
@@ -153,14 +206,14 @@ mod tests {
         // expected_chunk = 0b0110_1111_0100_1100 --> On Intel: Little-Endian: oL
         let mut expected_chunk= rdr.read_u32::<NativeEndian>()
             .expect("Error reading chunk bigger than 8");
-        // expected_chunk = 0b0110_0000_0100_1100
+        // expected_chunk = 0b0110_0000_0100_1100 --> We remove lower half of "o".
         expected_chunk = expected_chunk & 0xF0FF;
         let mut wtr: Vec<u8> = Vec::new();
         // wtr = [0100_1100, 0110_0000, 0, 0]
         wtr.write_u32::<NativeEndian>(expected_chunk)
             .expect("Error writing chunk bigger than 8.");
-        let mut expected_int = normalize(bytes_to_u32(wtr), 12);
-        // expected_int = 0b0100_1100_0110_0000_0000_0000_0000_0000
+        let mut expected_int = normalize(bytes_to_u32(wtr), 12, true);
+        // expected_int = 0b0100_1100_0110
         assert_eq!(expected_int, chunk.data);
         reader.next(); // Lower half of "o" and "r".
         reader.next(); // "e" and upper half of "m".
@@ -175,14 +228,14 @@ mod tests {
         // expected_chunk = 0b0010_0000_0110_1101
         expected_chunk= rdr.read_u32::<NativeEndian>()
             .expect("Error reading chunk bigger than 8");
-        // expected_chunk = 0b0010_0000_0000_1101
+        // expected_chunk = 0b0010_0000_0000_1101 --> Remove upper half of "m".
         expected_chunk = expected_chunk & 0xFF0F;
         wtr = Vec::new();
         // wtr = [0000_1101, 0010_0000, 0, 0]
         wtr.write_u32::<NativeEndian>(expected_chunk)
             .expect("Error writing chunk bigger than 8.");
-        // expected_int = 0b0000_1101_0010
-        expected_int = normalize(bytes_to_u32(wtr), 12+4);
+        // expected_int = 0b1101_0010_0000
+        expected_int = normalize(bytes_to_u32(wtr), 12, false);
         // chunk_data = 0b1101_0010_0000
         assert_eq!(expected_int, chunk.data);
     }
