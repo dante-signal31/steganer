@@ -1,6 +1,7 @@
 pub mod argparser;
 pub mod configuration;
 pub mod filereader;
+pub mod stegimage;
 pub mod test_common;
 
 use std::error::Error;
