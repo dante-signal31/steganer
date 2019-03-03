@@ -3,6 +3,16 @@
 /// Thanks to ContentReader type you can get an iterator to read a file to hide a get its bits
 /// in predefined bunches. Every bunch of bits are returned inside a Chunk type.
 ///
+/// # Usage example:
+/// ```
+/// use steganer::filereader::{FileContent, ContentReader};
+///
+/// let file_content = FileContent::new("source_file.txt");
+/// let reader = ContentReader::new(&file_content, 4);
+/// for chunk in reader {
+///     // Do things with every chunk of 4 bits of data from source_file.txt.
+/// }
+/// ```
 use std::fs::File;
 use std::io::{BufReader, Read, Write, Error};
 use std::iter::Iterator;
@@ -10,13 +20,11 @@ use bitreader::BitReader;
 use std::path::PathBuf;
 
 /// Bits read from files to be hidden are stored at Chunks.
-///
-/// # Properties:
-/// * data: (u32) Every Chunks stores a maximum of 32 read bits at this property "data", those bits are
-/// at natural order (Big Endian) and justified to right.
-/// * order: (u64) An index about relative position of this chunk at file to be hidden.
 pub struct Chunk {
+    /// Every Chunk stores a maximum of 32 read bits at this property, those bits are
+    /// at natural order (Big Endian) and justified to right.
     pub data: u32,
+    /// An index about relative position of this chunk at file to be hidden.
     pub order: u64,
 }
 
@@ -31,12 +39,10 @@ impl Chunk {
 ///
 /// Once this type is created with its new() method, file is automatically read and its contents
 /// is placed at "content" attribute.
-///
-/// # Properties:
-/// * source: (File) File to be read.
-/// * content: (Vec\<u8>) Vector of bytes with read content.
 struct FileContent {
+    /// File to be read.
     source: File,
+    /// Vector of bytes with read content.
     content: Vec<u8>,
 }
 
@@ -57,14 +63,12 @@ impl FileContent {
 /// ContentReader gives you an iterator to read a FileContent data.
 ///
 /// Iterator returns a Chunk Type with bit read in every read iteration.
-///
-/// # Properties:
-/// * bit_reader: (BitReader) BitReader type to read bits alone.
-/// * chunk_size: (u8) Amount of bits to get in each iterator round.
-/// * position: (u64) Index about how many read rounds we've done using iterator.
 struct ContentReader<'a> {
+    /// BitReader type to read bits alone.
     bit_reader: BitReader<'a>,
+    /// Amount of bits to get in each iterator round.
     chunk_size: u8,
+    /// Index about how many read rounds we've done using iterator.
     position: u64,
 }
 
