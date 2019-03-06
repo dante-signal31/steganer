@@ -47,10 +47,34 @@ impl ContainerImage{
 #[cfg(test)]
 mod tests {
     use super::*;
-    use image::{ImageBuffer, GenericImage};
+    use std::path::PathBuf;
+    use image::{ImageBuffer, GenericImage, ImageDecoder};
+    use crate::test_common::TestEnvironment;
 
-    fn create_test_image()-> GenericImage{
-        let test_image = ImageBuffer::new(512, 512);
+    enum test_colors {
+        BLACK,
+        WHITE
+    };
+
+    fn create_test_image(fill_color: test_colors)-> (TestEnvironment, PathBuf) {
+        let test_env = TestEnvironment::new();
+        let color = match fill_color {
+            test_colors::BLACK=> image::Rgb([0, 0, 0]),
+            test_colors::WHITE=> image::Rgb([255,255,255]),
+        };
+        let test_image = ImageBuffer::from_fn(512, 512, |_, _| {color})
+        let test_image_path = test_env.path().join("test_image.png");
+        test_image.save(test_image_path)
+            .except("Something wrong happened saving test image");
+        (test_env, test_image_path)
+    }
+
+    #[test]
+    fn test_encode_bits() {
+        let (test_env, test_image_path) = create_test_image(test_colors::BLACK);
+        let container = ContainerImage::new(test_image_path.to_str()
+            .except("Something worng happened cpnverting test image path to str"));
+
 
     }
 }

@@ -11,7 +11,7 @@ use tempfile::{tempdir, TempDir};
 /// manually generated temp folder.
 ///
 /// # Example
-/// ```
+/// ```rust
 /// {
 ///     let test_folder = TestEnvironment::new();
 ///     let test_folder_path = test_folder.path();
