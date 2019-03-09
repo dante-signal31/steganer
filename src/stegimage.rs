@@ -92,7 +92,6 @@ mod tests {
         let mut test_bits: u32 = 0;
         let expected_upper_byte: u8 = 0b_00110100;
         let expected_lower_byte: u8 = 0b_00010110;
-        test_bits = test_bits & 0;
         test_bits = test_bits + expected_upper_byte;
         test_bits = test_bits << 8;
         test_bits = test_bits + expected_lower_byte;
