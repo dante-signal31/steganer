@@ -42,6 +42,10 @@ impl ContainerImage{
     fn get_coordinates(position: u64)-> (u32, u32){
 
     }
+
+    fn get_image(&self)-> &DynamicImage {
+        &self.image
+    }
 }
 
 #[cfg(test)]
@@ -54,7 +58,7 @@ mod tests {
     enum test_colors {
         BLACK,
         WHITE
-    };
+    }
 
     fn create_test_image(fill_color: test_colors)-> (TestEnvironment, PathBuf) {
         let test_env = TestEnvironment::new();
@@ -70,11 +74,39 @@ mod tests {
     }
 
     #[test]
-    fn test_encode_bits() {
+    fn test_encode_less_than_8_bits() {
+        let mut test_bits: u32 = 0b_10110;
+        let mut test_bits_length: u8 = 5;
         let (test_env, test_image_path) = create_test_image(test_colors::BLACK);
-        let container = ContainerImage::new(test_image_path.to_str()
-            .except("Something worng happened cpnverting test image path to str"));
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .except("Something wrong happened converting test image path to str"));
+        container.encode_bits(test_bits, test_bits_length, 0, 0);
+        let mut pixel = container.get_image().get_pixel(0,0);
+        assert_eq!(pixel.data[2], test_bits as u8,
+                   "Error encoding less than 8 bits. Expected {} but encoded {}",
+                   test_bits, pixel.data[2]);
+    }
 
-
+    #[test]
+    fn test_encode_up_to_16_bits() {
+        let mut test_bits: u32 = 0;
+        let expected_upper_byte: u8 = 0b_00110100;
+        let expected_lower_byte: u8 = 0b_00010110;
+        test_bits = test_bits & 0;
+        test_bits = test_bits + expected_upper_byte;
+        test_bits = test_bits << 8;
+        test_bits = test_bits + expected_lower_byte;
+        let test_bits_length: u8 = 14;
+        let (test_env, test_image_path) = create_test_image(test_colors::BLACK);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .except("Something wrong happened converting test image path to str"));
+        let mut pixel = container.get_image().get_pixel(0,0);
+        pixel = container.get_image().get_pixel(0,0);
+        assert_eq!(pixel.data[1], test_bits as u8,
+                   "Error encoding more than 8 bits. Upper byte expected {} but encoded {}",
+                   expected_upper_byte, pixel.data[1]);
+        assert_eq!(pixel.data[2], test_bits as u8,
+                   "Error encoding more than 8 bits. Lower byte expected {} but encoded {}",
+                   expected_upper_byte, pixel.data[2]);
     }
 }
