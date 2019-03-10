@@ -14,6 +14,8 @@ pub fn bytes_to_u24(bytes: &[u8; 3])-> u32 {
 ///
 /// Most significant bits are stored at first byte while least significant
 /// bits are left at last byte.
+///
+/// If given int is longer than 24 bits then exceeding bits are discarded.
 pub fn u24_to_bytes(int: u32)-> [u8; 3]{
     [0, 0, 0]
 }
