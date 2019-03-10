@@ -101,11 +101,102 @@ mod tests {
             .except("Something wrong happened converting test image path to str"));
         let mut pixel = container.get_image().get_pixel(0,0);
         pixel = container.get_image().get_pixel(0,0);
-        assert_eq!(pixel.data[1], test_bits as u8,
+        assert_eq!(pixel.data[1], expected_upper_byte,
                    "Error encoding more than 8 bits. Upper byte expected {} but encoded {}",
                    expected_upper_byte, pixel.data[1]);
-        assert_eq!(pixel.data[2], test_bits as u8,
+        assert_eq!(pixel.data[2], eexpected_lower_byte,
                    "Error encoding more than 8 bits. Lower byte expected {} but encoded {}",
-                   expected_upper_byte, pixel.data[2]);
+                   expected_lower_byte, pixel.data[2]);
+    }
+
+    #[test]
+    fn test_encode_up_to_24_bits() {
+        let mut test_bits: u32 = 0;
+        let expected_upper_byte: u8 = 0b_00000110;
+        let expected_middle_byte: u8 = 0b_00110100;
+        let expected_lower_byte: u8 = 0b_00010110;
+        test_bits = test_bits + ((expected_upper_byte as u32) << 16) +
+            ((expected_middle_byte as u32) << 8) +
+            (expected_lower_byte as u32);
+        let test_bits_length: u8 = 19;
+        let (test_env, test_image_path) = create_test_image(test_colors::BLACK);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .except("Something wrong happened converting test image path to str"));
+        let mut pixel = container.get_image().get_pixel(0,0);
+        pixel = container.get_image().get_pixel(0,0);
+        assert_eq!(pixel.data[0], expected_upper_byte,
+                   "Error encoding more than 16 bits. Upper byte expected {} but encoded {}",
+                   expected_upper_byte, pixel.data[0]);
+        assert_eq!(pixel.data[1], expected_middle_byte,
+                   "Error encoding more than 16 bits. Middle byte expected {} but encoded {}",
+                   expected_middle_byte, pixel.data[1]);
+        assert_eq!(pixel.data[2], expected_lower_byte,
+                   "Error encoding more than 16 bits. Lower byte expected {} but encoded {}",
+                   expected_lower_byte, pixel.data[2]);
+    }
+
+    #[test]
+    fn test_encode_less_than_8_bits_masked() {
+        let mut test_bits: u32 = 0b_10110;
+        let mut expected_recovered_bits: u8 = 0b_111_10110;
+        let mut test_bits_length: u8 = 5;
+        let (test_env, test_image_path) = create_test_image(test_colors::WHITE);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .except("Something wrong happened converting test image path to str"));
+        container.encode_bits(test_bits, test_bits_length, 0, 0);
+        let mut pixel = container.get_image().get_pixel(0,0);
+        assert_eq!(pixel.data[2], expected_recovered_bits,
+                   "Error encoding less than 8 bits masked. Expected {} but encoded {}",
+                   expected_recovered_bits, pixel.data[2]);
+    }
+
+    #[test]
+    fn test_encode_up_to_16_bits_masked() {
+        let mut test_bits: u32 = 0;
+        let expected_upper_byte: u8 = 0b_00110100;
+        let expected_lower_byte: u8 = 0b_00010110;
+        test_bits = test_bits + expected_upper_byte;
+        test_bits = test_bits << 8;
+        test_bits = test_bits + expected_lower_byte;
+        let test_bits_length: u8 = 14;
+        let expected_recovered_upper_byte: u8 = 0b_11_110100;
+        let (test_env, test_image_path) = create_test_image(test_colors::BLACK);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .except("Something wrong happened converting test image path to str"));
+        let mut pixel = container.get_image().get_pixel(0,0);
+        pixel = container.get_image().get_pixel(0,0);
+        assert_eq!(pixel.data[1], expected_recovered_upper_byte,
+                   "Error encoding more than 8 bits. Upper byte expected {} but encoded {}",
+                   expected_recovered_upper_byte, pixel.data[1]);
+        assert_eq!(pixel.data[2], test_bits,
+                   "Error encoding more than 8 bits. Lower byte expected {} but encoded {}",
+                   expected_lower_byte, pixel.data[2]);
+    }
+
+    #[test]
+    fn test_encode_up_to_24_bits_masked() {
+        let mut test_bits: u32 = 0;
+        let expected_upper_byte: u8 = 0b_00000110;
+        let expected_middle_byte: u8 = 0b_00110100;
+        let expected_lower_byte: u8 = 0b_00010110;
+        test_bits = test_bits + ((expected_upper_byte as u32) << 16) +
+            ((expected_middle_byte as u32) << 8) +
+            (expected_lower_byte as u32);
+        let test_bits_length: u8 = 19;
+        let expected_recovered_upper_byte: u8 = 0b_11111_110;
+        let (test_env, test_image_path) = create_test_image(test_colors::BLACK);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .except("Something wrong happened converting test image path to str"));
+        let mut pixel = container.get_image().get_pixel(0,0);
+        pixel = container.get_image().get_pixel(0,0);
+        assert_eq!(pixel.data[0], expected_recovered_upper_byte,
+                   "Error encoding more than 16 bits. Upper byte expected {} but encoded {}",
+                   expected_recovered_upper_byte, pixel.data[0]);
+        assert_eq!(pixel.data[1], expected_middle_byte,
+                   "Error encoding more than 16 bits. Middle byte expected {} but encoded {}",
+                   expected_middle_byte, pixel.data[1]);
+        assert_eq!(pixel.data[2], expected_lower_byte,
+                   "Error encoding more than 16 bits. Lower byte expected {} but encoded {}",
+                   expected_lower_byte, pixel.data[2]);
     }
 }
