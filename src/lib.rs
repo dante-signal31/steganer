@@ -1,4 +1,5 @@
 pub mod argparser;
+pub mod bytetools;
 pub mod configuration;
 pub mod filereader;
 pub mod stegimage;

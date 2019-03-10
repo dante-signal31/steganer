@@ -32,6 +32,8 @@ impl ContainerImage{
 //    }
 
     fn encode_bits(&mut self, bits: u32, bits_length: u8, x: u32, y: u32){
+//        let pixel = self.image.get_pixel_mut(x, y);
+//        let pixel_value: u32 = ((pixel[0] as u32) << 16) + ((pixel[1] as u32) << 8) + (pixel[0] as u32);
 
     }
 
