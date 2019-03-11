@@ -6,7 +6,9 @@
 /// * BMP
 /// * ICO
 /// * PNM
-use image::{DynamicImage, GenericImageView};
+use image::{DynamicImage, GenericImage, GenericImageView};
+
+use crate::bytetools::{mask, u24_to_bytes};
 
 const HEADER_LENGTH: u8 = 32;
 
@@ -32,9 +34,14 @@ impl ContainerImage{
 //    }
 
     fn encode_bits(&mut self, bits: u32, bits_length: u8, x: u32, y: u32){
-//        let pixel = self.image.get_pixel_mut(x, y);
-//        let pixel_value: u32 = ((pixel[0] as u32) << 16) + ((pixel[1] as u32) << 8) + (pixel[0] as u32);
-
+        let pixel = self.image.get_pixel_mut(x, y);
+        let original_pixel_value: u32 = ((pixel[0] as u32) << 16) + ((pixel[1] as u32) << 8) + (pixel[0] as u32);
+        let modified_pixel_value = (original_pixel_value & mask(bits_length, true)) + bits;
+        let modified_pixel_bytes = u24_to_bytes(modified_pixel_value);
+        *pixel = image::Rgba([modified_pixel_bytes[0],
+            modified_pixel_bytes[1],
+            modified_pixel_bytes[2],
+            pixel[3]]); // We keep original Alpha channel.
     }
 
 //    fn encode_data(&mut self, chunk_data: u32, chunk_data_length: u8, position: u64){
