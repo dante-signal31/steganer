@@ -4,7 +4,7 @@
 /// in predefined bunches. Every bunch of bits are returned inside a Chunk type.
 ///
 /// # Usage example:
-/// ```
+/// ```rust
 /// use steganer::filereader::{FileContent, ContentReader};
 ///
 /// let file_content = FileContent::new("source_file.txt");
