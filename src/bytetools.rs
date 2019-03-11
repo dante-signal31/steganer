@@ -5,7 +5,11 @@
 /// bytes[0] is shifted to most significant position, while bytes[1] is kept
 /// at middle position and bytes[2] is left at least significant position.
 ///
-/// As rust has no u24, what is returned is an u32 with its first byte set to 0.
+/// # Parameters:
+/// * bytes: Reference to an array of 3 bytes.
+///
+/// # Returns:
+/// * As rust has no u24, what is returned is an u32 with its first byte set to 0.
 pub fn bytes_to_u24(bytes: &[u8; 3])-> u32 {
     ((bytes[0] as u32) << 16) + ((bytes[1] as u32) << 8) + (bytes[2] as u32)
 }
@@ -16,6 +20,13 @@ pub fn bytes_to_u24(bytes: &[u8; 3])-> u32 {
 /// bits are left at last byte.
 ///
 /// If given int is longer than 24 bits then exceeding bits are discarded.
+///
+/// # Parameters:
+/// * int: u32 to be split in bytes. As we split only 3 bytes bits from 25 position to 32
+/// are discarded.
+///
+/// # Returns:
+/// * Array of 3 bytes.
 pub fn u24_to_bytes(int: u32)-> [u8; 3]{
     let lower_byte = (int & mask(8, false)) as u8;
     let middle_byte = ((int >> 8) & mask(8, false)) as u8;
