@@ -34,14 +34,28 @@ impl ContainerImage{
 //    }
 
     fn encode_bits(&mut self, bits: u32, bits_length: u8, x: u32, y: u32){
-        let pixel = self.image.get_pixel_mut(x, y);
-        let original_pixel_value: u32 = ((pixel[0] as u32) << 16) + ((pixel[1] as u32) << 8) + (pixel[0] as u32);
-        let modified_pixel_value = (original_pixel_value & mask(bits_length, true)) + bits;
-        let modified_pixel_bytes = u24_to_bytes(modified_pixel_value);
-        *pixel = image::Rgba([modified_pixel_bytes[0],
-            modified_pixel_bytes[1],
-            modified_pixel_bytes[2],
-            pixel[3]]); // We keep original Alpha channel.
+        // TODO: Refactor needed. Too much code repetition.
+        if let Some(contained_image) = self.image.as_mut_rgba8() {
+            let pixel = contained_image.get_pixel_mut(x, y);
+            let original_pixel_value: u32 = ((pixel[0] as u32) << 16) + ((pixel[1] as u32) << 8) + (pixel[2] as u32);
+            let modified_pixel_value = (original_pixel_value & mask(bits_length, true)) + bits;
+            let modified_pixel_bytes = u24_to_bytes(modified_pixel_value);
+            *pixel = image::Rgba([modified_pixel_bytes[0],
+                modified_pixel_bytes[1],
+                modified_pixel_bytes[2],
+                pixel[3]]); // We keep original Alpha channel.
+
+        } else {
+            let contained_image = self.image.as_mut_rgb8()
+                .expect("Something wrong happened when accessing to inner image to encode data");
+            let pixel = contained_image.get_pixel_mut(x, y);
+            let original_pixel_value: u32 = ((pixel[0] as u32) << 16) + ((pixel[1] as u32) << 8) + (pixel[2] as u32);
+            let modified_pixel_value = (original_pixel_value & mask(bits_length, true)) + bits;
+            let modified_pixel_bytes = u24_to_bytes(modified_pixel_value);
+            *pixel = image::Rgb([modified_pixel_bytes[0],
+                modified_pixel_bytes[1],
+                modified_pixel_bytes[2]]);
+        }
     }
 
 //    fn encode_data(&mut self, chunk_data: u32, chunk_data_length: u8, position: u64){
