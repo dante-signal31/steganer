@@ -37,9 +37,7 @@ impl ContainerImage{
         // TODO: Refactor needed. Too much code repetition.
         if let Some(contained_image) = self.image.as_mut_rgba8() {
             let pixel = contained_image.get_pixel_mut(x, y);
-            let original_pixel_value: u32 = ((pixel[0] as u32) << 16) + ((pixel[1] as u32) << 8) + (pixel[2] as u32);
-            let modified_pixel_value = (original_pixel_value & mask(bits_length, true)) + bits;
-            let modified_pixel_bytes = u24_to_bytes(modified_pixel_value);
+            let modified_pixel_bytes = ContainerImage::overwrite_pixel(&pixel.data[..3], bits, bits_length);
             *pixel = image::Rgba([modified_pixel_bytes[0],
                 modified_pixel_bytes[1],
                 modified_pixel_bytes[2],
@@ -49,13 +47,18 @@ impl ContainerImage{
             let contained_image = self.image.as_mut_rgb8()
                 .expect("Something wrong happened when accessing to inner image to encode data");
             let pixel = contained_image.get_pixel_mut(x, y);
-            let original_pixel_value: u32 = ((pixel[0] as u32) << 16) + ((pixel[1] as u32) << 8) + (pixel[2] as u32);
-            let modified_pixel_value = (original_pixel_value & mask(bits_length, true)) + bits;
-            let modified_pixel_bytes = u24_to_bytes(modified_pixel_value);
+            let modified_pixel_bytes = ContainerImage::overwrite_pixel(&pixel.data[..3], bits, bits_length);
             *pixel = image::Rgb([modified_pixel_bytes[0],
                 modified_pixel_bytes[1],
                 modified_pixel_bytes[2]]);
         }
+    }
+
+    pub fn overwrite_pixel(rgb: &[u8], bits: u32, bits_length: u8)-> [u8; 3]{
+        let original_pixel_value: u32 = ((rgb[0] as u32) << 16) + ((rgb[1] as u32) << 8) + (rgb[2] as u32);
+        let modified_pixel_value = (original_pixel_value & mask(bits_length, true)) + bits;
+        let modified_pixel_bytes = u24_to_bytes(modified_pixel_value);
+        modified_pixel_bytes
     }
 
 //    fn encode_data(&mut self, chunk_data: u32, chunk_data_length: u8, position: u64){
