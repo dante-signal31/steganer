@@ -33,6 +33,13 @@ impl ContainerImage{
 //
 //    }
 
+    /// Encode given bits at pixel defined by x and y coordinates.
+    ///
+    /// # Parameters:
+    /// * bits: Data to be hidden.
+    /// * bits_length: How many bits at bits parameter are actually data to be hidden.
+    /// * x: X coordinate of pixel where data is going to be hidden.
+    /// * y: Y coordinate of pixel where data is going to be hidden.
     fn encode_bits(&mut self, bits: u32, bits_length: u8, x: u32, y: u32){
         // We don't know if host image is going to have an alpha channel or not. So
         // we must implement both cases.
@@ -55,6 +62,7 @@ impl ContainerImage{
         }
     }
 
+    /// Called by self.encode_bits() to get which value should have host pixel after data hidding.
     fn overwrite_pixel(rgb: &[u8], bits: u32, bits_length: u8)-> [u8; 3]{
         let original_pixel_value: u32 = ((rgb[0] as u32) << 16) + ((rgb[1] as u32) << 8) + (rgb[2] as u32);
         let modified_pixel_value = (original_pixel_value & mask(bits_length, true)) + bits;
