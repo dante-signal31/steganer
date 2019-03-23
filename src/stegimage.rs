@@ -120,8 +120,9 @@ mod tests {
         test_bits = test_bits + (expected_lower_byte as u32);
         let test_bits_length: u8 = 14;
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
-        let container = ContainerImage::new(test_image_path.to_str()
+        let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
+        container.encode_bits(test_bits, test_bits_length, 0, 0);
         let mut pixel = container.get_image().get_pixel(0,0);
         pixel = container.get_image().get_pixel(0,0);
         assert_eq!(pixel.data[1], expected_upper_byte,
@@ -143,8 +144,9 @@ mod tests {
             (expected_lower_byte as u32);
         let test_bits_length: u8 = 19;
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
-        let container = ContainerImage::new(test_image_path.to_str()
+        let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
+        container.encode_bits(test_bits, test_bits_length, 0, 0);
         let mut pixel = container.get_image().get_pixel(0,0);
         pixel = container.get_image().get_pixel(0,0);
         assert_eq!(pixel.data[0], expected_upper_byte,
@@ -183,9 +185,10 @@ mod tests {
         test_bits = test_bits + (expected_lower_byte as u32);
         let test_bits_length: u8 = 14;
         let expected_recovered_upper_byte: u8 = 0b_11_110100;
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
-        let container = ContainerImage::new(test_image_path.to_str()
+        let (test_env, test_image_path) = create_test_image(TestColors::WHITE);
+        let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
+        container.encode_bits(test_bits, test_bits_length, 0, 0);
         let mut pixel = container.get_image().get_pixel(0,0);
         pixel = container.get_image().get_pixel(0,0);
         assert_eq!(pixel.data[1], expected_recovered_upper_byte,
@@ -207,10 +210,11 @@ mod tests {
             (expected_lower_byte as u32);
         let test_bits_length: u8 = 19;
         let expected_recovered_upper_byte: u8 = 0b_11111_110;
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
-        let container = ContainerImage::new(test_image_path.to_str()
+        let (test_env, test_image_path) = create_test_image(TestColors::WHITE);
+        let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
         let mut pixel = container.get_image().get_pixel(0,0);
+        container.encode_bits(test_bits, test_bits_length, 0, 0);
         pixel = container.get_image().get_pixel(0,0);
         assert_eq!(pixel.data[0], expected_recovered_upper_byte,
                    "Error encoding more than 16 bits. Upper byte expected {} but encoded {}",
