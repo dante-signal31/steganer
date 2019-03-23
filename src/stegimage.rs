@@ -34,7 +34,8 @@ impl ContainerImage{
 //    }
 
     fn encode_bits(&mut self, bits: u32, bits_length: u8, x: u32, y: u32){
-        // TODO: Refactor needed. Too much code repetition.
+        // We don't know if host image is going to have an alpha channel or not. So
+        // we must implement both cases.
         if let Some(contained_image) = self.image.as_mut_rgba8() {
             let pixel = contained_image.get_pixel_mut(x, y);
             let modified_pixel_bytes = ContainerImage::overwrite_pixel(&pixel.data[..3], bits, bits_length);
@@ -54,7 +55,7 @@ impl ContainerImage{
         }
     }
 
-    pub fn overwrite_pixel(rgb: &[u8], bits: u32, bits_length: u8)-> [u8; 3]{
+    fn overwrite_pixel(rgb: &[u8], bits: u32, bits_length: u8)-> [u8; 3]{
         let original_pixel_value: u32 = ((rgb[0] as u32) << 16) + ((rgb[1] as u32) << 8) + (rgb[2] as u32);
         let modified_pixel_value = (original_pixel_value & mask(bits_length, true)) + bits;
         let modified_pixel_bytes = u24_to_bytes(modified_pixel_value);
