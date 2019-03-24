@@ -70,6 +70,19 @@ impl ContainerImage{
         modified_pixel_bytes
     }
 
+    /// Decode bits hidden into given pixel defined by x and y coordinates.
+    ///
+    /// # Parameters:
+    /// * x: X coordinate of pixel where data is going to be hidden.
+    /// * y: Y coordinate of pixel where data is going to be hidden.
+    /// * bits_length: How many bits at pixel are actually hiden data.
+    ///
+    /// # Returns:
+    /// * Recovered bits are returned into a u32.
+//    fn decode_bits(&self, x: u32, y: u32, bits_length: u8)-> u32{
+//
+//    }
+
 //    fn encode_data(&mut self, chunk_data: u32, chunk_data_length: u8, position: u64){
 //
 //    }
@@ -97,15 +110,26 @@ mod tests {
 
     fn create_test_image(fill_color: TestColors) -> (TestEnvironment, PathBuf) {
         let test_env = TestEnvironment::new();
-        let color = match fill_color {
-            TestColors::BLACK=> image::Rgb([0, 0, 0]),
-            TestColors::WHITE=> image::Rgb([255,255,255]),
+        let test_image_path = match fill_color {
+            TestColors::BLACK=> save_image_filled(&test_env, [0, 0, 0]),
+            TestColors::WHITE=> save_image_filled(&test_env, [255, 255, 255]),
         };
+        (test_env, test_image_path)
+    }
+
+    fn create_test_image_with_custom_color(fill_color: u32)-> (TestEnvironment, PathBuf){
+        let test_env = TestEnvironment::new();
+        let test_image_path = save_image_filled(&test_env, u24_to_bytes(fill_color));
+        (test_env, test_image_path)
+    }
+
+    fn save_image_filled(test_env: &TestEnvironment, color: [u8; 3])-> PathBuf{
+        let color = image::Rgb(color);
         let test_image = ImageBuffer::from_fn(512, 512, |_, _| {color});
         let test_image_path = test_env.path().join("test_image.png");
         test_image.save(&test_image_path)
             .expect("Something wrong happened saving test image");
-        (test_env, test_image_path)
+        test_image_path
     }
 
     #[test]
@@ -238,4 +262,9 @@ mod tests {
                    "Error encoding more than 16 bits. Lower byte expected {} but encoded {}",
                    expected_lower_byte, pixel.data[2]);
     }
+
+//    #[test]
+//    fn test_decode_less_than_8_bits() {
+//
+//    }
 }
