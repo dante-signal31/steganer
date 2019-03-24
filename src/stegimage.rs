@@ -79,9 +79,9 @@ impl ContainerImage{
     ///
     /// # Returns:
     /// * Recovered bits are returned into a u32.
-//    fn decode_bits(&self, x: u32, y: u32, bits_length: u8)-> u32{
-//
-//    }
+    fn decode_bits(&self, x: u32, y: u32, bits_length: u8)-> u32{
+       0
+    }
 
 //    fn encode_data(&mut self, chunk_data: u32, chunk_data_length: u8, position: u64){
 //
@@ -263,8 +263,65 @@ mod tests {
                    expected_lower_byte, pixel.data[2]);
     }
 
-//    #[test]
-//    fn test_decode_less_than_8_bits() {
-//
-//    }
+    #[test]
+    fn test_decode_less_than_8_bits() {
+        let test_bits: u32 = 0b_10110;
+        let test_bits_length: u8 = 5;
+        let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        let recovered_bits = container.decode_bits( 0, 0, test_bits_length);
+        assert_eq!(test_bits, recovered_bits,
+                   "Error decoding less than 8 bits. Expected {} but encoded {}",
+                   test_bits, recovered_bits);
+    }
+
+    #[test]
+    fn test_decode_up_to_16_bits() {
+        let mut test_bits: u32 = 0;
+        let expected_upper_byte: u8 = 0b_00110100;
+        let expected_lower_byte: u8 = 0b_00010110;
+        test_bits = test_bits + (expected_upper_byte as u32);
+        test_bits = test_bits << 8;
+        test_bits = test_bits + (expected_lower_byte as u32);
+        let test_bits_length: u8 = 14;
+        let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        let recovered_bits = container.decode_bits( 0, 0, test_bits_length);
+        let recovered_bytes = u24_to_bytes(recovered_bits);
+        assert_eq!(expected_upper_byte, recovered_bytes[0],
+                   "Error decoding more than 8 bits. Upper byte expected {} but encoded {}",
+                   expected_upper_byte, recovered_bytes[0]);
+        assert_eq!(expected_lower_byte, recovered_bytes[1],
+                   "Error decoding more than 8 bits. Lower byte expected {} but encoded {}",
+                   expected_lower_byte, recovered_bytes[1]);
+    }
+
+    #[test]
+    fn test_decode_up_to_24_bits() {
+        let mut test_bits: u32 = 0;
+        let expected_upper_byte: u8 = 0b_00000110;
+        let expected_middle_byte: u8 = 0b_00110100;
+        let expected_lower_byte: u8 = 0b_00010110;
+        test_bits = test_bits + ((expected_upper_byte as u32) << 16) +
+            ((expected_middle_byte as u32) << 8) +
+            (expected_lower_byte as u32);
+        let test_bits_length: u8 = 19;
+        let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        let recovered_bits = container.decode_bits( 0, 0, test_bits_length,);
+        let recovered_bytes = u24_to_bytes(recovered_bits);
+        assert_eq!(expected_upper_byte, recovered_bytes[0],
+                   "Error decoding more than 16 bits. Upper byte expected {} but decoded {}",
+                   expected_upper_byte, recovered_bytes[0]);
+        assert_eq!(expected_middle_byte, recovered_bytes[1],
+                   "Error decoding more than 16 bits. Middle byte expected {} but decoded {}",
+                   expected_middle_byte, recovered_bytes[1]);
+        assert_eq!(expected_lower_byte, recovered_bytes[2],
+                   "Error decoding more than 16 bits. Lower byte expected {} but decoded {}",
+                   expected_lower_byte, recovered_bytes[2]);
+
+    }
 }
