@@ -9,6 +9,7 @@
 use image::{DynamicImage, GenericImage, GenericImageView};
 
 use crate::bytetools::{mask, u24_to_bytes, bytes_to_u24};
+use crate::extract;
 
 const HEADER_LENGTH: u8 = 32;
 
@@ -82,17 +83,19 @@ impl ContainerImage{
         // I don't know if we have an image with alpha channel so both cases should be implemented.
         if let Some(contained_image) = self.image.as_rgba8() {
             let pixel = contained_image.get_pixel(x, y);
-            let pixel_value = bytes_to_u24(&[pixel[0], pixel[1], pixel[2]]);
-            let recovered_bits = pixel_value & mask(bits_length, false);
-            recovered_bits
+            ContainerImage::extract_hidden_data(&[pixel[0], pixel[1], pixel[2]], bits_length)
         } else {
             let contained_image = self.image.as_rgb8()
                 .expect("Something wrong happened when accessing to inner image to encode data");
             let pixel = contained_image.get_pixel(x, y);
-            let pixel_value = bytes_to_u24(&[pixel[0], pixel[1], pixel[2]]);
-            let recovered_bits = pixel_value & mask(bits_length, false);
-            recovered_bits
+            ContainerImage::extract_hidden_data(&[pixel[0], pixel[1], pixel[2]], bits_length)
         }
+    }
+
+    fn extract_hidden_data(pixel: &[u8; 3], bits_length: u8)-> u32{
+        let pixel_value = bytes_to_u24(pixel);
+        let recovered_bits = pixel_value & mask(bits_length, false);
+        recovered_bits
     }
 
 //    fn encode_data(&mut self, chunk_data: u32, chunk_data_length: u8, position: u64){
