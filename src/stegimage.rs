@@ -8,7 +8,7 @@
 /// * PNM
 use image::{DynamicImage, GenericImage, GenericImageView};
 
-use crate::bytetools::{mask, u24_to_bytes};
+use crate::bytetools::{mask, u24_to_bytes, bytes_to_u24};
 
 const HEADER_LENGTH: u8 = 32;
 
@@ -50,7 +50,6 @@ impl ContainerImage{
                 modified_pixel_bytes[1],
                 modified_pixel_bytes[2],
                 pixel[3]]); // We keep original Alpha channel.
-
         } else {
             let contained_image = self.image.as_mut_rgb8()
                 .expect("Something wrong happened when accessing to inner image to encode data");
@@ -80,7 +79,20 @@ impl ContainerImage{
     /// # Returns:
     /// * Recovered bits are returned into a u32.
     fn decode_bits(&self, x: u32, y: u32, bits_length: u8)-> u32{
-       0
+        // I don't know if we have an image with alpha channel so both cases should be implemented.
+        if let Some(contained_image) = self.image.as_rgba8() {
+            let pixel = contained_image.get_pixel(x, y);
+            let pixel_value = bytes_to_u24(&[pixel[0], pixel[1], pixel[2]]);
+            let recovered_bits = pixel_value & mask(bits_length, false);
+            recovered_bits
+        } else {
+            let contained_image = self.image.as_rgb8()
+                .expect("Something wrong happened when accessing to inner image to encode data");
+            let pixel = contained_image.get_pixel(x, y);
+            let pixel_value = bytes_to_u24(&[pixel[0], pixel[1], pixel[2]]);
+            let recovered_bits = pixel_value & mask(bits_length, false);
+            recovered_bits
+        }
     }
 
 //    fn encode_data(&mut self, chunk_data: u32, chunk_data_length: u8, position: u64){
@@ -290,12 +302,12 @@ mod tests {
             .expect("Something wrong happened converting test image path to str"));
         let recovered_bits = container.decode_bits( 0, 0, test_bits_length);
         let recovered_bytes = u24_to_bytes(recovered_bits);
-        assert_eq!(expected_upper_byte, recovered_bytes[0],
+        assert_eq!(expected_upper_byte, recovered_bytes[1],
                    "Error decoding more than 8 bits. Upper byte expected {} but encoded {}",
-                   expected_upper_byte, recovered_bytes[0]);
-        assert_eq!(expected_lower_byte, recovered_bytes[1],
+                   expected_upper_byte, recovered_bytes[1]);
+        assert_eq!(expected_lower_byte, recovered_bytes[2],
                    "Error decoding more than 8 bits. Lower byte expected {} but encoded {}",
-                   expected_lower_byte, recovered_bytes[1]);
+                   expected_lower_byte, recovered_bytes[2]);
     }
 
     #[test]
