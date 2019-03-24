@@ -12,7 +12,7 @@ use crate::bytetools::{mask, u24_to_bytes, bytes_to_u24};
 use crate::extract;
 
 const HEADER_PIXEL_LENGTH: u8 = 32;
-const SIZE_LENGTH: u8 = 64;
+const SIZE_LENGTH: u8 = 32;
 
 struct ContainerImage {
     image: DynamicImage,
@@ -29,10 +29,21 @@ impl ContainerImage{
         ContainerImage{image, width, height}
     }
 
-    /// First HEADER_PIXEL_LENGTH pixels of container image hides a u64 with encoded
-    /// data length. This functions encodes that u64 in those pixels.
-    fn encode_header(&mut self, total_data_size: u64){
-
+    /// First HEADER_PIXEL_LENGTH pixels of container image hides a u32 with encoded
+    /// data length. This functions encodes that u32 in those pixels.
+    ///
+    /// This way decoding function knows how many bytes decode from host image.
+    ///
+    /// # Parameters:
+    /// * total_data_size: Total amount of bytes for data hidden.
+    fn encode_header(&mut self, total_data_size: u32){
+        let bits_per_pixel = SIZE_LENGTH / HEADER_PIXEL_LENGTH;
+        for i in 0..HEADER_PIXEL_LENGTH {
+            let mask_for_portion = !mask(SIZE_LENGTH - bits_per_pixel, false) >> (bits_per_pixel * i);
+            let bits_portion = total_data_size & mask_for_portion;
+            let bits_normalized = (bits_portion as u64) >> (bits_per_pixel * (HEADER_PIXEL_LENGTH - 1 - i));
+            self.encode_bits(bits_normalized as u32, bits_per_pixel, i as u32, 0);
+        }
     }
 
     /// Encode given bits at pixel defined by x and y coordinates.
@@ -151,20 +162,21 @@ mod tests {
 
     #[test]
     fn test_encode_header() {
-        let encoded_size: u64 = 33;
+        let encoded_size: u32 = 33;
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
         container.encode_header(encoded_size);
         let mut recovered_size: u64 = 0;
+        let bits_per_pixel = SIZE_LENGTH / HEADER_PIXEL_LENGTH;
         for i in 0..HEADER_PIXEL_LENGTH {
             let pixel = container.get_image().get_pixel(i as u32,0);
-            let pixel_hidden_bits: u64 = (bytes_to_u24(&[pixel[0], pixel[1], pixel[2]]) & mask(2, false)) as u64;
-            recovered_size += pixel_hidden_bits << (2 * (HEADER_PIXEL_LENGTH - 1 - i) as u64);
+            let pixel_hidden_bits = bytes_to_u24(&[pixel[0], pixel[1], pixel[2]]) & mask(bits_per_pixel, false);
+            recovered_size += (pixel_hidden_bits as u64) << (bits_per_pixel * (HEADER_PIXEL_LENGTH - 1 - i));
         }
-        assert_eq!(recovered_size, encoded_size,
+        assert_eq!(recovered_size as u32, encoded_size,
             "Error recovering encoded header: Expected {} but recovered {}",
-            encoded_size, recovered_size);
+            encoded_size, recovered_size as u32);
     }
 
     #[test]
