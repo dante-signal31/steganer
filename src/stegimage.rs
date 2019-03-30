@@ -52,7 +52,14 @@ impl ContainerImage{
     /// # Returns:
     /// * Length in bytes of hidden data file.
     fn decode_header(&self)-> u32{
-        0
+        let mut size = 0u32;
+        let bits_per_pixel = SIZE_LENGTH / HEADER_PIXEL_LENGTH;
+        for i in 0..HEADER_PIXEL_LENGTH {
+            let partial_bits = self.decode_bits(i as u32, 0, bits_per_pixel);
+            let left_shift = (SIZE_LENGTH - 1) - (i * bits_per_pixel);
+            size += partial_bits << left_shift;
+        }
+        size
     }
 
     /// Encode given bits at pixel defined by x and y coordinates.
