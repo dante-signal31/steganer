@@ -46,6 +46,15 @@ impl ContainerImage{
         }
     }
 
+    /// Read first HEADER_PIXEL_LENGTH pixels of container image to decode length of hidden
+    /// data.
+    ///
+    /// # Returns:
+    /// * Length in bytes of hidden data file.
+    fn decode_header(&self)-> u32{
+        0
+    }
+
     /// Encode given bits at pixel defined by x and y coordinates.
     ///
     /// # Parameters:
@@ -119,8 +128,8 @@ impl ContainerImage{
 //
 //    }
 
-    fn get_image(&self)-> &DynamicImage {
-        &self.image
+    fn get_image(&mut self)-> &mut DynamicImage {
+        &mut self.image
     }
 }
 
@@ -130,6 +139,7 @@ mod tests {
     use std::path::PathBuf;
     use image::{ImageBuffer, GenericImageView, ImageDecoder};
     use crate::test_common::TestEnvironment;
+    use crate::bytetools::get_bits;
 
     enum TestColors {
         BLACK,
@@ -177,6 +187,30 @@ mod tests {
         assert_eq!(recovered_size as u32, encoded_size,
             "Error recovering encoded header: Expected {} but recovered {}",
             encoded_size, recovered_size as u32);
+    }
+
+    #[test]
+    fn test_decode_header() {
+        let encoded_size: u32 = 33;
+        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        let bits_per_pixel = SIZE_LENGTH / HEADER_PIXEL_LENGTH;
+        for i in 0..HEADER_PIXEL_LENGTH {
+            // First encode header manually.
+            let bits = get_bits(encoded_size, i * bits_per_pixel, bits_per_pixel);
+            let pixel = container.get_image().as_mut_rgb8()
+                .expect("Error accessing to test image")
+                .get_pixel_mut(i as u32, 0);
+            let original_value = bytes_to_u24(&[pixel[0], pixel[1], pixel[2]]);
+            let modified_value = (original_value & mask(bits_per_pixel, true)) + bits;
+            let modified_bytes = u24_to_bytes(modified_value);
+            *pixel = image::Rgb([modified_bytes[0], modified_bytes[1], modified_bytes[2]]);
+        }
+        // Now decode with tested function.
+        let decoded_size = container.decode_header();
+        assert_eq!(decoded_size, encoded_size, "Error decoding header: Expected {} but recovered {}",
+                   encoded_size, decoded_size);
     }
 
     #[test]
