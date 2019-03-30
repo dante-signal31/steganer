@@ -1,5 +1,9 @@
 /// Module to perform byte operations.
 
+use std::mem::size_of;
+use num::Integer;
+use std::ops::{BitAnd, Shr, Shl};
+
 /// Convert 3 bytes to a 24 bits long integer.
 ///
 /// bytes[0] is shifted to most significant position, while bytes[1] is kept
@@ -36,15 +40,15 @@ pub fn u24_to_bytes(int: u32)-> [u8; 3]{
 
 /// Return a mask to apply to binary operations.
 ///
-/// # Parameters
+/// # Parameters:
 /// * length: Number of 1's from least significant bit. Every other bit is set to 0.
 /// * inverted: If true then a number of 0's equal to length is placed from least significant bit.
 /// Every other bit is set to 1.
 ///
-/// # Returns
+/// # Returns:
 /// * A mask coded in an u32.
 ///
-/// # Example
+/// # Example:
 /// ```rust
 /// use steganer::bytetools::mask;
 ///
@@ -60,6 +64,33 @@ pub fn mask(length: u8, inverted: bool)-> u32 {
         true=> !normal_mask,
         false=> normal_mask,
     }
+}
+
+/// Get bits from a given position.
+///
+/// # Parameters
+/// * source: Type with data to get bits from. Works with u64 and u32.
+/// * position: Zero indexed position from left to get bits from.
+/// * length: Number o bits to get rightwards from position.
+///
+/// # Returns:
+/// * Requested bits into a type similar to what was entered.
+///
+/// # Example:
+/// ```rust
+/// use steganer::bytetools::get_bits;
+///
+/// let bits_u32 = get_bits(0b_0001_1000_u32, 27, 2 ); // As u32, 3 zeroed bytes are prepended before 0b_0001_1000.
+/// assert_eq!(bits_u32, 0b_11_u32);
+/// ```
+pub fn get_bits<T>(source: T, position: u8, length: u8)-> T
+    where
+        T: Integer + BitAnd<Output=T> + Shr<Output=T> + Shl<Output=T> + From<u32> + From<u8> + Copy {
+    let l = size_of::<T>();
+    let source_length = size_of::<T>() * 8;
+    let right_drift = T::from(source_length as u8 - position - length);
+    let bit_mask = T::from(mask(length, false)) << right_drift;
+    (source & bit_mask) >> right_drift
 }
 
 #[cfg(test)]
@@ -99,6 +130,21 @@ mod tests {
                    expected_inverted_mask, inverted_mask);
     }
 
+    #[test]
+    fn test_get_bits() {
+        let bits_u32 = get_bits(INT, 24,2);
+        assert_eq!(bits_u32, 0b_11u32,
+                   "Bits not properly extracted. Expected {:#b} but we've got {:#b}",
+                   0b_11u32, bits_u32);
+        let bits_u64 = get_bits(INT as u64, 48, 4);
+        assert_eq!(bits_u64, 0b_0101u64,
+                   "Bits not properly extracted. Expected {:#b} but we've got {:#b}",
+                   0b_0101u64, bits_u64);
+        let bits_u32_2 = get_bits(0b_0001_1000_u32, 27, 2 );
+        assert_eq!(bits_u32_2, 0b_11_u32,
+                   "Bits not properly extracted. Expected {:#b} but we've got {:#b}",
+                   0b_11_u32, bits_u32_2);
+    }
 
 
 }
