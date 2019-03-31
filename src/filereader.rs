@@ -39,7 +39,7 @@ impl Chunk {
 ///
 /// Once this type is created with its new() method, file is automatically read and its contents
 /// is placed at "content" attribute.
-struct FileContent {
+pub struct FileContent {
     /// File to be read.
     source: File,
     /// Vector of bytes with read content.
@@ -63,7 +63,7 @@ impl FileContent {
 /// ContentReader gives you an iterator to read a FileContent data.
 ///
 /// Iterator returns a Chunk Type with bits read in every read iteration.
-struct ContentReader<'a> {
+pub struct ContentReader<'a> {
     /// BitReader type to read bits alone.
     bit_reader: BitReader<'a>,
     /// Amount of bits to get in each iterator round.
