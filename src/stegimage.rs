@@ -205,7 +205,7 @@ mod tests {
         let bits_per_pixel = SIZE_LENGTH / HEADER_PIXEL_LENGTH;
         for i in 0..HEADER_PIXEL_LENGTH {
             // First encode header manually.
-            let bits = get_bits(encoded_size, i * bits_per_pixel, bits_per_pixel);
+            let bits = get_bits(encoded_size, i * bits_per_pixel, bits_per_pixel) as u32;
             let pixel = container.get_image().as_mut_rgb8()
                 .expect("Error accessing to test image")
                 .get_pixel_mut(i as u32, 0);
