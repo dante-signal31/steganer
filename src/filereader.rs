@@ -62,7 +62,7 @@ impl FileContent {
 
 /// ContentReader gives you an iterator to read a FileContent data.
 ///
-/// Iterator returns a Chunk Type with bit read in every read iteration.
+/// Iterator returns a Chunk Type with bits read in every read iteration.
 struct ContentReader<'a> {
     /// BitReader type to read bits alone.
     bit_reader: BitReader<'a>,
