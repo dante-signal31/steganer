@@ -86,7 +86,6 @@ pub fn mask(length: u8, inverted: bool)-> u32 {
 pub fn get_bits<T>(source: T, position: u8, length: u8)-> T
     where
         T: Integer + BitAnd<Output=T> + Shr<Output=T> + Shl<Output=T> + From<u32> + From<u8> + Copy {
-    let l = size_of::<T>();
     let source_length = size_of::<T>() * 8;
     let right_drift = T::from(source_length as u8 - position - length);
     let bit_mask = T::from(mask(length, false)) << right_drift;
