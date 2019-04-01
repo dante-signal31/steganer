@@ -29,7 +29,7 @@ impl ContainerImage{
         ContainerImage{image, width, height}
     }
 
-    /// Get recommended chunk size to hide desired file into this image.
+    /// Get needed chunk size to hide desired file into this image.
     ///
     /// # Parameter:
     /// * total_data_size: Total amount of bytes for data to be hidden.
@@ -37,7 +37,9 @@ impl ContainerImage{
     /// # Returns:
     /// * Chunk size. Each chunk will be encoded in a pixel.
     fn get_chunk_size(&self, total_data_size: u32)-> u8{
-        0u8
+        let usable_pixels_amount = (self.height * self.width) - HEADER_PIXEL_LENGTH as u32;
+        let bits_per_pixel = (((total_data_size * 8) as f32) / usable_pixels_amount as f32).ceil() as u8;
+        bits_per_pixel
     }
 
     /// First HEADER_PIXEL_LENGTH pixels of container image hides a u32 with encoded
