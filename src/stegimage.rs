@@ -29,6 +29,17 @@ impl ContainerImage{
         ContainerImage{image, width, height}
     }
 
+    /// Get recommended chunk size to hide desired file into this image.
+    ///
+    /// # Parameter:
+    /// * total_data_size: Total amount of bytes for data to be hidden.
+    ///
+    /// # Returns:
+    /// * Chunk size. Each chunk will be encoded in a pixel.
+    fn get_chunk_size(&self, total_data_size: u32)-> u8{
+        0u8
+    }
+
     /// First HEADER_PIXEL_LENGTH pixels of container image hides a u32 with encoded
     /// data length. This functions encodes that u32 in those pixels.
     ///
@@ -127,6 +138,8 @@ impl ContainerImage{
         recovered_bits
     }
 
+
+
 //    fn encode_data(&mut self, chunk_data: u32, chunk_data_length: u8, position: u64){
 //
 //    }
@@ -175,6 +188,21 @@ mod tests {
         test_image.save(&test_image_path)
             .expect("Something wrong happened saving test image");
         test_image_path
+    }
+
+    #[test]
+    fn test_get_chunk_size() {
+        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        // Temporary test image has 512x512 = 262.144 pixels.
+        // But we use first HEADER_PIXEL_LENGTH bits for header, so we can use
+        // 262.144 - HEADER_PIXEL_LENGTH to hide data.
+        let chunk_size = container.get_chunk_size(8156); // Size of resources/genesis.txt is 8156.
+        let expected_chunk_size = ((8156_f64 * 8_f64) / ((512_f64*512_f64) - HEADER_PIXEL_LENGTH as f64)).ceil() as u8;
+        assert_eq!(expected_chunk_size, chunk_size,
+                   "Recovered chunk size was not what we were expecting. Expected {} but got {}",
+                   expected_chunk_size, chunk_size);
     }
 
     #[test]
