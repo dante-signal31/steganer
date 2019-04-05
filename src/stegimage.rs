@@ -11,11 +11,13 @@ use std::fmt;
 use image::{DynamicImage, GenericImage, GenericImageView};
 
 use crate::bytetools::{mask, u24_to_bytes, bytes_to_u24};
+use crate::filereader::Chunk;
 use crate::extract;
 
 const HEADER_PIXEL_LENGTH: u8 = 32;
 const SIZE_LENGTH: u8 = 32;
 
+/// Helper type to store Pixels positions.
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 struct Position(u32, u32);
 
@@ -25,6 +27,7 @@ impl fmt::Display for Position {
     }
 }
 
+/// Wrapper to deal with image that is going to contain hidden file.
 struct ContainerImage {
     image: DynamicImage,
     width: u32,
@@ -45,6 +48,8 @@ impl ContainerImage{
     /// It is called when you know which file to hide. When you pass in its file size
     /// it is encoded in ContainerImage header. Besides, file to hide size is used to calculate
     /// how many bits should be hidden per pixel.
+    ///
+    /// This method should be called once, before encode_data() is called for the first time.
     ///
     /// # Parameters:
     /// * total_data_size: File to hide size in bytes
@@ -167,11 +172,12 @@ impl ContainerImage{
         recovered_bits
     }
 
+    /// Hide a chunk inside host image.
+    ///
+    /// chunk.order is used to decide which pixel is going to hide chunk.data.
+    pub fn encode_data(&mut self, chunk: &Chunk){
 
-
-//    fn encode_data(&mut self, chunk_data: u32, chunk_data_length: u8, position: u64){
-//
-//    }
+    }
 
     /// Get pixel coordinates where nth chunk should be encoded.
     ///
@@ -505,5 +511,26 @@ mod tests {
         assert_eq!(expected_third_row_coordinates, recovered_position_third_row,
                    "Recovered position for third row was not what we were expecting. Expected {} but got {}",
                    &expected_third_row_coordinates, recovered_position_third_row);
+    }
+
+    #[test]
+    fn test_encode_data() {
+        let hidden_data = 0b_111000111_u32;
+        let hidden_data_length = 9;
+        let position = 5;
+        let chunk = Chunk::new(hidden_data, hidden_data_length, position);
+        // Test environment build.
+        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        // Test:
+        container.encode_data(&chunk);
+        let pixel = container.get_image().get_pixel((HEADER_PIXEL_LENGTH + 5) as u32, 0);
+        assert_eq!(0b_1_u8, pixel.data[1],
+                   "Recovered data for upper byte was not what we were expecting. Expected {:#b} but got {:#b}",
+                   0b_1_u8, pixel.data[1]);
+        assert_eq!(0b_11000111_u8, pixel.data[2],
+                   "Recovered data for lower byte was not what we were expecting. Expected {:#b} but got {:#b}",
+                   0b_11000111_u8, pixel.data[2]);
     }
 }

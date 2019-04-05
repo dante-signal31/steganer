@@ -28,12 +28,12 @@ pub struct Chunk {
     /// tou're probably going read less bits than requested.
     pub length: u8,
     /// An index about relative position of this chunk at file to be hidden.
-    pub order: u64,
+    pub order: u32,
 }
 
 impl Chunk {
     #[must_use]
-    pub fn new(data: u32, length: u8, order: u64)-> Self {
+    pub fn new(data: u32, length: u8, order: u32)-> Self {
         Chunk {data, length, order}
     }
 }
@@ -72,7 +72,7 @@ pub struct ContentReader<'a> {
     /// Amount of bits to get in each iterator round.
     chunk_size: u8,
     /// Index about how many read rounds we've done using iterator.
-    position: u64,
+    position: u32,
 }
 
 impl<'a> ContentReader<'a> {
