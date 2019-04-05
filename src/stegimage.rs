@@ -29,6 +29,22 @@ impl ContainerImage{
         ContainerImage{image, width, height}
     }
 
+    /// Prepare ContainerImage to host a hidden file.
+    ///
+    /// It is called when you know which file to hide. When you pass in its file size
+    /// it is encoded in ContainerImage header. Besides, file to hide size is used to calculate
+    /// how many bits should be hidden per pixel.
+    ///
+    /// # Parameters:
+    /// * total_data_size: File to hide size in bytes
+    ///
+    /// # Returns:
+    /// * Bits to be hidden per pixel.
+    pub fn setup_hiding(&mut self, total_data_size: u32) -> u8 {
+        self.encode_header(total_data_size);
+        self.get_chunk_size(total_data_size)
+    }
+
     /// Get needed chunk size to hide desired file into this image.
     ///
     /// # Parameter:
