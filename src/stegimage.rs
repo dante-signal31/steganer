@@ -180,8 +180,11 @@ impl ContainerImage{
     ///
     /// # Returns:
     /// * Position of image pixel where this chunk should be stored.
-    fn get_coordinates(&self, position: u64)-> Position{
-        Position(0,0)
+    fn get_coordinates(&self, position: u32)-> Position{
+        let offset_position = HEADER_PIXEL_LENGTH as u32 + position;
+        let x_position = offset_position % self.width;
+        let y_position = offset_position / self.width;
+        Position(x_position, y_position)
     }
 
     fn get_image(&mut self)-> &mut DynamicImage {
@@ -478,24 +481,29 @@ mod tests {
 
     #[test]
     fn test_get_coordinates() {
+        let test_image_width: u32 = 512;
         let position_first_row = 5;
-        let position_second_row = 150;
-        let position_third_row = 300;
+        let position_second_row = 570;
+        let position_third_row = 1100;
         let expected_first_row_coordinates = Position((HEADER_PIXEL_LENGTH + 5) as u32, 0);
-        let expected_second_row_coordinates = Position((150_u32 - 125_u32 + HEADER_PIXEL_LENGTH as u32), 1);
-        let expected_third_row_coordinates = Position((300_u32 - 250_u32 + HEADER_PIXEL_LENGTH as u32), 2);
-        // Test image is 512x512.
+        let expected_second_row_coordinates = Position((position_second_row as u32 - test_image_width + HEADER_PIXEL_LENGTH as u32), 1);
+        let expected_third_row_coordinates = Position((position_third_row as u32 - (test_image_width * 2) + HEADER_PIXEL_LENGTH as u32), 2);
+        // Test environment build.
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
-        assert_eq!(expected_first_row_coordinates, container.get_coordinates(position_first_row),
-                   "Recovered position for first was not what we were expecting. Expected {} but got {}",
-                   &expected_first_row_coordinates, container.get_coordinates(position_first_row));
-        assert_eq!(expected_second_row_coordinates, container.get_coordinates(position_second_row),
-                   "Recovered position for second was not what we were expecting. Expected {} but got {}",
-                   &expected_second_row_coordinates, container.get_coordinates(position_second_row));
-        assert_eq!(expected_third_row_coordinates, container.get_coordinates(position_third_row),
-                   "Recovered position for third was not what we were expecting. Expected {} but got {}",
-                   &expected_third_row_coordinates, container.get_coordinates(position_third_row));
+        // Tests.
+        let recovered_position_first_row = container.get_coordinates(position_first_row);
+        assert_eq!(expected_first_row_coordinates, recovered_position_first_row,
+                   "Recovered position for first row was not what we were expecting. Expected {} but got {}",
+                   &expected_first_row_coordinates, recovered_position_first_row);
+        let recovered_position_second_row = container.get_coordinates(position_second_row);
+        assert_eq!(expected_second_row_coordinates, recovered_position_second_row,
+                   "Recovered position for second row was not what we were expecting. Expected {} but got {}",
+                   &expected_second_row_coordinates, recovered_position_second_row);
+        let recovered_position_third_row = container.get_coordinates(position_third_row);
+        assert_eq!(expected_third_row_coordinates, recovered_position_third_row,
+                   "Recovered position for third row was not what we were expecting. Expected {} but got {}",
+                   &expected_third_row_coordinates, recovered_position_third_row);
     }
 }
