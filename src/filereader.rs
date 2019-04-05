@@ -16,7 +16,7 @@
 use std::fs::File;
 use std::io::{BufReader, Read, Write, Error};
 use std::iter::Iterator;
-use bitreader::BitReader;
+use bitreader::{BitReader, BitReaderError};
 use std::path::PathBuf;
 
 /// Bits read from files to be hidden are stored at Chunks.
@@ -24,14 +24,17 @@ pub struct Chunk {
     /// Every Chunk stores a maximum of 32 read bits at this property, those bits are
     /// at natural order (Big Endian) and justified to right.
     pub data: u32,
+    /// Number of bits actually stored at data attribute. If you are reading the last few file bits
+    /// tou're probably going read less bits than requested.
+    pub length: u8,
     /// An index about relative position of this chunk at file to be hidden.
     pub order: u64,
 }
 
 impl Chunk {
     #[must_use]
-    pub fn new(data: u32, order: u64)-> Self {
-        Chunk {data, order}
+    pub fn new(data: u32, length: u8, order: u64)-> Self {
+        Chunk {data, length, order}
     }
 }
 
@@ -84,14 +87,32 @@ impl<'a> ContentReader<'a> {
     }
 }
 
+/// Iterator to read file content a chunk at a time.
+///
+/// Iterator will try to read self.chunk_size bits at a time. So returned chunk's length attribute
+/// is going to be equal to self.chunk_size unless we are really near to the file end. In that
+/// last case less than self.chunk_size will be actually read so chunk's length attribute will
+/// have the actual number of bits that were actually read.
 impl<'a> Iterator for ContentReader<'a> {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let data = self.bit_reader.read_u32(self.chunk_size)
-            .expect("Error reading data");
-        self.position += 1;
-        let chunk = Chunk::new(data, self.position);
+        let chunk = match self.bit_reader.read_u32(self.chunk_size) {
+            Ok(bits)=> {
+                self.position += 1;
+                Chunk::new(bits, self.chunk_size, self.position)
+            }
+            Err(e)=> {
+                if let BitReaderError::NotEnoughData {position, length, requested} = e {
+                    let bits = self.bit_reader.read_u32(length as u8)
+                        .expect("Error reading last few bits from file to be hidden.");
+                    self.position += 1;
+                    Chunk::new(bits, length as u8, self.position)
+                } else {
+                    panic!("Error reading data to be hidden");
+                }
+            }
+        };
         Some(chunk)
     }
 }
