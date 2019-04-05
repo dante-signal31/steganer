@@ -176,7 +176,8 @@ impl ContainerImage{
     ///
     /// chunk.order is used to decide which pixel is going to hide chunk.data.
     pub fn encode_data(&mut self, chunk: &Chunk){
-
+        let Position(x, y) = self.get_coordinates(chunk.order);
+        self.encode_bits(chunk.data, chunk.length, x, y);
     }
 
     /// Get pixel coordinates where nth chunk should be encoded.
