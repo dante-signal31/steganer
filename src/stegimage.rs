@@ -6,6 +6,8 @@
 /// * BMP
 /// * ICO
 /// * PNM
+use std::fmt;
+
 use image::{DynamicImage, GenericImage, GenericImageView};
 
 use crate::bytetools::{mask, u24_to_bytes, bytes_to_u24};
@@ -13,6 +15,15 @@ use crate::extract;
 
 const HEADER_PIXEL_LENGTH: u8 = 32;
 const SIZE_LENGTH: u8 = 32;
+
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
+struct Position(u32, u32);
+
+impl fmt::Display for Position {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "(x:{}, y:{})", self.0, self.1)
+    }
+}
 
 struct ContainerImage {
     image: DynamicImage,
@@ -162,9 +173,16 @@ impl ContainerImage{
 //
 //    }
 
-//    fn get_coordinates(position: u64)-> (u32, u32){
-//
-//    }
+    /// Get pixel coordinates where nth chunk should be encoded.
+    ///
+    /// # Parameters:
+    /// * position: Position of data chunk inside file to be hidden.
+    ///
+    /// # Returns:
+    /// * Position of image pixel where this chunk should be stored.
+    fn get_coordinates(&self, position: u64)-> Position{
+        Position(0,0)
+    }
 
     fn get_image(&mut self)-> &mut DynamicImage {
         &mut self.image
@@ -456,6 +474,28 @@ mod tests {
         assert_eq!(expected_lower_byte, recovered_bytes[2],
                    "Error decoding more than 16 bits. Lower byte expected {} but decoded {}",
                    expected_lower_byte, recovered_bytes[2]);
+    }
 
+    #[test]
+    fn test_get_coordinates() {
+        let position_first_row = 5;
+        let position_second_row = 150;
+        let position_third_row = 300;
+        let expected_first_row_coordinates = Position((HEADER_PIXEL_LENGTH + 5) as u32, 0);
+        let expected_second_row_coordinates = Position((150_u32 - 125_u32 + HEADER_PIXEL_LENGTH as u32), 1);
+        let expected_third_row_coordinates = Position((300_u32 - 250_u32 + HEADER_PIXEL_LENGTH as u32), 2);
+        // Test image is 512x512.
+        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        assert_eq!(expected_first_row_coordinates, container.get_coordinates(position_first_row),
+                   "Recovered position for first was not what we were expecting. Expected {} but got {}",
+                   &expected_first_row_coordinates, container.get_coordinates(position_first_row));
+        assert_eq!(expected_second_row_coordinates, container.get_coordinates(position_second_row),
+                   "Recovered position for second was not what we were expecting. Expected {} but got {}",
+                   &expected_second_row_coordinates, container.get_coordinates(position_second_row));
+        assert_eq!(expected_third_row_coordinates, container.get_coordinates(position_third_row),
+                   "Recovered position for third was not what we were expecting. Expected {} but got {}",
+                   &expected_third_row_coordinates, container.get_coordinates(position_third_row));
     }
 }
