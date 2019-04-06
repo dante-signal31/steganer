@@ -7,6 +7,7 @@
 /// * ICO
 /// * PNM
 use std::fmt;
+use std::iter::Iterator;
 
 use image::{DynamicImage, GenericImage, GenericImageView};
 
@@ -196,6 +197,20 @@ impl ContainerImage{
 
     fn get_image(&mut self)-> &mut DynamicImage {
         &mut self.image
+    }
+}
+
+/// Iterator to extract hidden file content a chunk at a time.
+///
+/// Iterator will try to fill data attribute of Chunk. If it can not fill it, because it is
+/// extracting last few bits then those bits are left justified to data attribute and length
+/// attribute is set to how many files it was able to read.
+impl Iterator for ContainerImage {
+    type Item = Chunk;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // TODO: Implement to decode hidden file using and iterator.
+        unimplemented!()
     }
 }
 
