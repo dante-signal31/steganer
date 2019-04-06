@@ -518,20 +518,50 @@ mod tests {
     fn test_encode_data() {
         let hidden_data = 0b_111000111_u32;
         let hidden_data_length = 9;
-        let position = 5;
-        let chunk = Chunk::new(hidden_data, hidden_data_length, position);
+        let position = 5_u8;
+        let chunk = Chunk::new(hidden_data, hidden_data_length, position as u32);
         // Test environment build.
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
         // Test:
         container.encode_data(&chunk);
-        let pixel = container.get_image().get_pixel((HEADER_PIXEL_LENGTH + 5) as u32, 0);
+        let pixel = container.get_image().get_pixel((HEADER_PIXEL_LENGTH + position) as u32, 0);
         assert_eq!(0b_1_u8, pixel.data[1],
                    "Recovered data for upper byte was not what we were expecting. Expected {:#b} but got {:#b}",
                    0b_1_u8, pixel.data[1]);
         assert_eq!(0b_11000111_u8, pixel.data[2],
                    "Recovered data for lower byte was not what we were expecting. Expected {:#b} but got {:#b}",
                    0b_11000111_u8, pixel.data[2]);
+    }
+
+    #[test]
+    fn test_header_and_hidden_data_dont_overlap() {
+        let header = 0b_1_u32;
+        let hidden_data = 0b_0000_0000_0000_0000_1010_0101_1100_0111_u32;
+        let hidden_data_length = 24;
+        let position = 0_u8;
+        let chunk = Chunk::new(hidden_data, hidden_data_length, position as u32);
+        // Test environment build.
+        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        // Test:
+        container.encode_header(header);
+        container.encode_data(&chunk);
+        let recovered_header = container.decode_header();
+        assert_eq!(header, recovered_header,
+                   "Recovered data for header was not what we were expecting. Expected {:#b} but got {:#b}",
+                   header, recovered_header);
+        let pixel = container.get_image().get_pixel((HEADER_PIXEL_LENGTH + position) as u32, 0);
+        assert_eq!(0b_0000_0000_u8, pixel.data[0],
+                   "Recovered data for upper byte was not what we were expecting. Expected {:#b} but got {:#b}",
+                   0b_0000_0000_u8, pixel.data[0]);
+        assert_eq!(0b_1010_0101__u8, pixel.data[1],
+                   "Recovered data for middle byte was not what we were expecting. Expected {:#b} but got {:#b}",
+                   0b_1010_0101_u8, pixel.data[1]);
+        assert_eq!(0b_1100_0111_u8, pixel.data[2],
+                   "Recovered data for lower byte was not what we were expecting. Expected {:#b} but got {:#b}",
+                   0b_1100_0111_u8, pixel.data[2]);
     }
 }
