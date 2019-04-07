@@ -7,7 +7,7 @@
 /// * ICO
 /// * PNM
 use std::fmt;
-use std::iter::Iterator;
+use std::iter::{Iterator, Enumerate};
 
 use image::{DynamicImage, GenericImage, GenericImageView};
 
@@ -28,11 +28,27 @@ impl fmt::Display for Position {
     }
 }
 
+/// Every ContainerImage that has been identified as host of a hidden image has a ReadingState
+/// type to manage hidden file extraction.
+struct ReadingState {
+    hidden_file_size: u32,
+    chunk_size: u8,
+    reading_position: u32
+}
+
+impl ReadingState {
+    #[must_use]
+    pub fn new(hidden_file_size: u32, chunk_size: u8, reading_position: u32)-> Self{
+        ReadingState{hidden_file_size, chunk_size, reading_position}
+    }
+}
+
 /// Wrapper to deal with image that is going to contain hidden file.
 struct ContainerImage {
     image: DynamicImage,
     width: u32,
     height: u32,
+    reading_state: Option<ReadingState>,
 }
 
 impl ContainerImage{
@@ -41,7 +57,7 @@ impl ContainerImage{
         let image = image::open(file_pathname)
             .expect("Something wrong happened opening given image");
         let (width, height) = image.dimensions();
-        ContainerImage{image, width, height}
+        ContainerImage{image, width, height, reading_state: None}
     }
 
     /// Prepare ContainerImage to host a hidden file.
@@ -60,6 +76,21 @@ impl ContainerImage{
     pub fn setup_hiding(&mut self, total_data_size: u32) -> u8 {
         self.encode_header(total_data_size);
         self.get_chunk_size(total_data_size)
+    }
+
+    /// Identify this ContainerImage as hidden file host and prepare extraction.
+    ///
+    /// When you call this function, hidden file size is extracted from hidden and chunk size
+    /// is calculated so we can know how many bits from every pixel are actually hidden data.
+    ///
+    /// All that info is stored in a ReadingState type into ContainerImage. After
+    /// setup_extraction() creates a ReadingState instance into ContainerImage you can call
+    /// that ContainerImage as an Iterator to extract hidden data chunks.
+    pub fn setup_extraction(&mut self){
+        let hidden_file_size = self.decode_header();
+        let chunk_size = self.get_chunk_size(hidden_file_size);
+        let reading_state = ReadingState::new(hidden_file_size, chunk_size, 0);
+        self.reading_state = Some(reading_state);
     }
 
     /// Get needed chunk size to hide desired file into this image.
@@ -209,8 +240,12 @@ impl Iterator for ContainerImage {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // TODO: Implement to decode hidden file using and iterator.
-        unimplemented!()
+        if let Some(state) = &self.reading_state {
+            let returned_chunk = Chunk::new(0,1,0);
+            Some(returned_chunk)
+        } else {
+            panic!("You tried to use this ContainerImage as an Iterator before calling setup_extraction().");
+        }
     }
 }
 
@@ -221,6 +256,7 @@ mod tests {
     use image::{ImageBuffer, GenericImageView, ImageDecoder};
     use crate::test_common::TestEnvironment;
     use crate::bytetools::get_bits;
+    use std::mem::size_of_val;
 
     enum TestColors {
         BLACK,
@@ -578,5 +614,31 @@ mod tests {
         assert_eq!(0b_1100_0111_u8, pixel.data[2],
                    "Recovered data for lower byte was not what we were expecting. Expected {:#b} but got {:#b}",
                    0b_1100_0111_u8, pixel.data[2]);
+    }
+    
+    #[test]
+    fn test_container_image_iterator() {
+        let hidden_data: [u32; 3] = [0b_1010_0101_1100_0111_u32,
+            0b_1111_0000_0000_1111_u32,
+            0b_1111_1010_0000_0000_u32];
+        let hidden_data_size = size_of_val(&hidden_data);
+        // Test environment build.
+        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        let chunk_size = container.setup_hiding(hidden_data_size as u32);
+        for (i, data) in hidden_data.iter().enumerate() {
+            let chunk = Chunk::new(*data, chunk_size, i as u32);
+            container.encode_data(&chunk);
+        }
+        // Test:
+        let mut recovered_data: [u32; 3] = [0; 3];
+        container.setup_extraction();
+        for (i, chunk) in container.enumerate() {
+            recovered_data[i] = chunk.data;
+        }
+        assert_eq!(hidden_data, recovered_data,
+                   "ContainerImage iterator did not recover expected data. Expected {:#?} but recovered {:#?}",
+                   hidden_data, recovered_data)
     }
 }
