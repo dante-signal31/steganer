@@ -20,11 +20,14 @@ const SIZE_LENGTH: u8 = 32;
 
 /// Helper type to store Pixels positions.
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
-struct Position(u32, u32);
+struct Position{
+    x: u32,
+    y: u32
+}
 
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(x:{}, y:{})", self.0, self.1)
+        write!(f, "(x:{}, y:{})", self.x, self.y)
     }
 }
 
@@ -208,7 +211,7 @@ impl ContainerImage{
     ///
     /// chunk.order is used to decide which pixel is going to hide chunk.data.
     pub fn encode_data(&mut self, chunk: &Chunk){
-        let Position(x, y) = self.get_coordinates(chunk.order);
+        let Position{x, y} = self.get_coordinates(chunk.order);
         self.encode_bits(chunk.data, chunk.length, x, y);
     }
 
@@ -221,9 +224,9 @@ impl ContainerImage{
     /// * Position of image pixel where this chunk should be stored.
     fn get_coordinates(&self, position: u32)-> Position{
         let offset_position = HEADER_PIXEL_LENGTH as u32 + position;
-        let x_position = offset_position % self.width;
-        let y_position = offset_position / self.width;
-        Position(x_position, y_position)
+        let x = offset_position % self.width;
+        let y = offset_position / self.width;
+        Position{x, y}
     }
 
     fn get_image(&mut self)-> &mut DynamicImage {
@@ -240,8 +243,31 @@ impl Iterator for ContainerImage {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {
+//        match &self.reading_state {
+//            Some(state)=> {
+//                let reading_coordinates = self.get_coordinates(state.reading_position);
+//                let extracted_bits = self.decode_bits(reading_coordinates.x, reading_coordinates.y, state.chunk_size);
+//                let new_position = state.reading_position + 1;
+//                let new_state = ReadingState::new(state.hidden_file_size,
+//                                                  state.chunk_size,
+//                                                  new_position);
+//                let returned_chunk = Chunk::new(extracted_bits, state.chunk_size, state.reading_position);
+//                self.reading_state = Some(new_state);
+//                return Some(returned_chunk)
+//            },
+//            None=> {
+//                panic!("You tried to use this ContainerImage as an Iterator before calling setup_extraction().");
+//            }
+//        }
         if let Some(state) = &self.reading_state {
-            let returned_chunk = Chunk::new(0,1,0);
+            let reading_coordinates = self.get_coordinates(state.reading_position);
+            let extracted_bits = self.decode_bits(reading_coordinates.x, reading_coordinates.y, state.chunk_size);
+            let returned_chunk = Chunk::new(extracted_bits, state.chunk_size, state.reading_position);
+            let new_position = state.reading_position + 1;
+            let new_state = ReadingState::new(state.hidden_file_size,
+                                              state.chunk_size,
+                                              new_position);
+            self.reading_state = Some(new_state);
             Some(returned_chunk)
         } else {
             panic!("You tried to use this ContainerImage as an Iterator before calling setup_extraction().");
@@ -543,9 +569,9 @@ mod tests {
         let position_first_row = 5;
         let position_second_row = 570;
         let position_third_row = 1100;
-        let expected_first_row_coordinates = Position((HEADER_PIXEL_LENGTH + 5) as u32, 0);
-        let expected_second_row_coordinates = Position((position_second_row as u32 - test_image_width + HEADER_PIXEL_LENGTH as u32), 1);
-        let expected_third_row_coordinates = Position((position_third_row as u32 - (test_image_width * 2) + HEADER_PIXEL_LENGTH as u32), 2);
+        let expected_first_row_coordinates = Position{x: (HEADER_PIXEL_LENGTH + 5) as u32, y: 0};
+        let expected_second_row_coordinates = Position{x: (position_second_row as u32 - test_image_width + HEADER_PIXEL_LENGTH as u32), y: 1};
+        let expected_third_row_coordinates = Position{x: (position_third_row as u32 - (test_image_width * 2) + HEADER_PIXEL_LENGTH as u32), y: 2};
         // Test environment build.
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
@@ -635,7 +661,8 @@ mod tests {
         let mut recovered_data: [u32; 3] = [0; 3];
         container.setup_extraction();
         for (i, chunk) in container.enumerate() {
-            recovered_data[i] = chunk.data;
+            let u32_index = i / 32;
+            recovered_data[u32_index] += chunk.data << (32 - (i + chunk_size as usize));
         }
         assert_eq!(hidden_data, recovered_data,
                    "ContainerImage iterator did not recover expected data. Expected {:#?} but recovered {:#?}",
