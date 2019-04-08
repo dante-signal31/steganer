@@ -260,15 +260,20 @@ impl Iterator for ContainerImage {
 //            }
 //        }
         if let Some(state) = &self.reading_state {
-            let reading_coordinates = self.get_coordinates(state.reading_position);
-            let extracted_bits = self.decode_bits(reading_coordinates.x, reading_coordinates.y, state.chunk_size);
-            let returned_chunk = Chunk::new(extracted_bits, state.chunk_size, state.reading_position);
-            let new_position = state.reading_position + 1;
-            let new_state = ReadingState::new(state.hidden_file_size,
-                                              state.chunk_size,
-                                              new_position);
-            self.reading_state = Some(new_state);
-            Some(returned_chunk)
+            let byte_position = (state.reading_position * state.chunk_size as u32) / 8;
+            if byte_position <= state.hidden_file_size {
+                let reading_coordinates = self.get_coordinates(state.reading_position);
+                let extracted_bits = self.decode_bits(reading_coordinates.x, reading_coordinates.y, state.chunk_size);
+                let returned_chunk = Chunk::new(extracted_bits, state.chunk_size, state.reading_position);
+                let new_position = state.reading_position + 1;
+                let new_state = ReadingState::new(state.hidden_file_size,
+                                                  state.chunk_size,
+                                                  new_position);
+                self.reading_state = Some(new_state);
+                Some(returned_chunk)
+            } else { // No more hidden data left in container image.
+                None
+            }
         } else {
             panic!("You tried to use this ContainerImage as an Iterator before calling setup_extraction().");
         }
@@ -279,6 +284,7 @@ impl Iterator for ContainerImage {
 mod tests {
     use super::*;
     use std::path::PathBuf;
+    use bitreader::BitReader;
     use image::{ImageBuffer, GenericImageView, ImageDecoder};
     use crate::test_common::TestEnvironment;
     use crate::bytetools::get_bits;
@@ -653,16 +659,24 @@ mod tests {
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
         let chunk_size = container.setup_hiding(hidden_data_size as u32);
-        for (i, data) in hidden_data.iter().enumerate() {
-            let chunk = Chunk::new(*data, chunk_size, i as u32);
-            container.encode_data(&chunk);
+        let mut position = 0_u32;
+        for data in hidden_data.iter() {
+            let data_bytes = u24_to_bytes(*data);
+            let mut bit_reader = BitReader::new(&data_bytes);
+            for _ in 0..(24/chunk_size) {
+                let data_chunk = bit_reader.read_u32(chunk_size)
+                    .expect("Error reading data chunk.");
+                let chunk = Chunk::new(data_chunk, chunk_size, position as u32);
+                container.encode_data(&chunk);
+                position += 1;
+            }
         }
         // Test:
         let mut recovered_data: [u32; 3] = [0; 3];
         container.setup_extraction();
         for (i, chunk) in container.enumerate() {
             let u32_index = i / 32;
-            recovered_data[u32_index] += chunk.data << (32 - (i + chunk_size as usize));
+            recovered_data[u32_index] = (recovered_data[u32_index] << chunk_size) + chunk.data;
         }
         assert_eq!(hidden_data, recovered_data,
                    "ContainerImage iterator did not recover expected data. Expected {:#?} but recovered {:#?}",
