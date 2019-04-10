@@ -89,7 +89,7 @@ impl ContainerImage{
     /// All that info is stored in a ReadingState type into ContainerImage. After
     /// setup_extraction() creates a ReadingState instance into ContainerImage you can call
     /// that ContainerImage as an Iterator to extract hidden data chunks.
-    pub fn setup_extraction(&mut self){
+    pub fn setup_hidden_data_extraction(&mut self){
         let hidden_file_size = self.decode_header();
         let chunk_size = self.get_chunk_size(hidden_file_size);
         let reading_state = ReadingState::new(hidden_file_size, chunk_size, 0);
@@ -210,7 +210,7 @@ impl ContainerImage{
     /// Hide a chunk inside host image.
     ///
     /// chunk.order is used to decide which pixel is going to hide chunk.data.
-    pub fn encode_data(&mut self, chunk: &Chunk){
+    pub fn hide_data(&mut self, chunk: &Chunk){
         let Position{x, y} = self.get_coordinates(chunk.order);
         self.encode_bits(chunk.data, chunk.length, x, y);
     }
@@ -259,7 +259,7 @@ impl Iterator for ContainerImage {
                 None
             }
         } else {
-            panic!("You tried to use this ContainerImage as an Iterator before calling setup_extraction().");
+            panic!("You tried to use this ContainerImage as an Iterator before calling setup_hidden_data_extraction().");
         }
     }
 }
@@ -592,7 +592,7 @@ mod tests {
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
         // Test:
-        container.encode_data(&chunk);
+        container.hide_data(&chunk);
         let pixel = container.get_image().get_pixel((HEADER_PIXEL_LENGTH + position) as u32, 0);
         assert_eq!(0b_1_u8, pixel.data[1],
                    "Recovered data for upper byte was not what we were expecting. Expected {:#b} but got {:#b}",
@@ -615,7 +615,7 @@ mod tests {
             .expect("Something wrong happened converting test image path to str"));
         // Test:
         container.encode_header(header);
-        container.encode_data(&chunk);
+        container.hide_data(&chunk);
         let recovered_header = container.decode_header();
         assert_eq!(header, recovered_header,
                    "Recovered data for header was not what we were expecting. Expected {:#b} but got {:#b}",
@@ -653,13 +653,13 @@ mod tests {
                 let data_chunk = bit_reader.read_u32(chunk_size)
                     .expect("Error reading data chunk.");
                 let chunk = Chunk::new(data_chunk, chunk_size, position as u32);
-                container.encode_data(&chunk);
+                container.hide_data(&chunk);
                 position += 1;
             }
         }
         // Test.
         let mut recovered_data: [u32; 3] = [0; 3];
-        container.setup_extraction();
+        container.setup_hidden_data_extraction();
         for (i, chunk) in container.enumerate() {
             let u24_index = i / 24;
             recovered_data[u24_index] = (recovered_data[u24_index] << chunk_size) + chunk.data;
