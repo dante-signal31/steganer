@@ -243,32 +243,16 @@ impl Iterator for ContainerImage {
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {
-//        match &self.reading_state {
-//            Some(state)=> {
-//                let reading_coordinates = self.get_coordinates(state.reading_position);
-//                let extracted_bits = self.decode_bits(reading_coordinates.x, reading_coordinates.y, state.chunk_size);
-//                let new_position = state.reading_position + 1;
-//                let new_state = ReadingState::new(state.hidden_file_size,
-//                                                  state.chunk_size,
-//                                                  new_position);
-//                let returned_chunk = Chunk::new(extracted_bits, state.chunk_size, state.reading_position);
-//                self.reading_state = Some(new_state);
-//                return Some(returned_chunk)
-//            },
-//            None=> {
-//                panic!("You tried to use this ContainerImage as an Iterator before calling setup_extraction().");
-//            }
-//        }
         if let Some(state) = &self.reading_state {
-            let byte_position = (state.reading_position * state.chunk_size as u32) / 8;
-            if byte_position <= state.hidden_file_size {
+            let bit_position = (state.reading_position * state.chunk_size as u32);
+            if bit_position < (state.hidden_file_size * 8) {
                 let reading_coordinates = self.get_coordinates(state.reading_position);
                 let extracted_bits = self.decode_bits(reading_coordinates.x, reading_coordinates.y, state.chunk_size);
                 let returned_chunk = Chunk::new(extracted_bits, state.chunk_size, state.reading_position);
-                let new_position = state.reading_position + 1;
+                let next_reading_position = state.reading_position + 1;
                 let new_state = ReadingState::new(state.hidden_file_size,
                                                   state.chunk_size,
-                                                  new_position);
+                                                  next_reading_position);
                 self.reading_state = Some(new_state);
                 Some(returned_chunk)
             } else { // No more hidden data left in container image.
@@ -653,11 +637,13 @@ mod tests {
         let hidden_data: [u32; 3] = [0b_1010_0101_1100_0111_u32,
             0b_1111_0000_0000_1111_u32,
             0b_1111_1010_0000_0000_u32];
-        let hidden_data_size = size_of_val(&hidden_data);
-        // Test environment build.
+        // I actually hide only 3 bytes per u32 so hidden file size is 3*3 instead of 3*4 bytes.
+        let hidden_data_size = (3*3) as usize;
+        // Build test environment.
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
+        // Populate test environment with hidden data.
         let chunk_size = container.setup_hiding(hidden_data_size as u32);
         let mut position = 0_u32;
         for data in hidden_data.iter() {
@@ -671,12 +657,12 @@ mod tests {
                 position += 1;
             }
         }
-        // Test:
+        // Test.
         let mut recovered_data: [u32; 3] = [0; 3];
         container.setup_extraction();
         for (i, chunk) in container.enumerate() {
-            let u32_index = i / 32;
-            recovered_data[u32_index] = (recovered_data[u32_index] << chunk_size) + chunk.data;
+            let u24_index = i / 24;
+            recovered_data[u24_index] = (recovered_data[u24_index] << chunk_size) + chunk.data;
         }
         assert_eq!(hidden_data, recovered_data,
                    "ContainerImage iterator did not recover expected data. Expected {:#?} but recovered {:#?}",
