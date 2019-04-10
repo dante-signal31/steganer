@@ -108,7 +108,7 @@ impl<'a> Iterator for ContentReader<'a> {
                 Chunk::new(bits, self.chunk_size, self.position)
             }
             Err(e)=> {
-                if let BitReaderError::NotEnoughData {position, length, requested} = e {
+                if let BitReaderError::NotEnoughData {position: _, length, requested: _} = e {
                     let bits = self.bit_reader.read_u32(length as u8)
                         .expect("Error reading last few bits from file to be hidden.");
                     self.position += 1;
