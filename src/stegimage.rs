@@ -7,13 +7,15 @@
 /// * ICO
 /// * PNM
 use std::fmt;
-use std::iter::{Iterator, Enumerate};
+//use std::iter::{Iterator, Enumerate};
+use std::iter::Iterator;
 
-use image::{DynamicImage, GenericImage, GenericImageView};
+//use image::{DynamicImage, GenericImage, GenericImageView};
+use image::{DynamicImage, GenericImageView};
 
 use crate::bytetools::{mask, u24_to_bytes, bytes_to_u24};
 use crate::filereader::Chunk;
-use crate::extract;
+//use crate::extract;
 
 const HEADER_PIXEL_LENGTH: u8 = 32;
 const SIZE_LENGTH: u8 = 32;
@@ -244,7 +246,7 @@ impl Iterator for ContainerImage {
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(state) = &self.reading_state {
-            let bit_position = (state.reading_position * state.chunk_size as u32);
+            let bit_position = state.reading_position * state.chunk_size as u32;
             if bit_position < (state.hidden_file_size * 8) {
                 let reading_coordinates = self.get_coordinates(state.reading_position);
                 let extracted_bits = self.decode_bits(reading_coordinates.x, reading_coordinates.y, state.chunk_size);
