@@ -14,9 +14,13 @@
 /// }
 /// ```
 use std::fs::File;
+// Write import gets a compiler warning. It warns about importing Write is useless but actually
+// if I remove Write import I get a compiler error in this module code.
 use std::io::{BufReader, Read, Write, Error};
 use std::iter::Iterator;
 use bitreader::{BitReader, BitReaderError};
+// Write import gets a compiler warning. It warns about importing PathBuf is useless but actually
+// if I remove PathBuf import I get a compiler error in this module code.
 use std::path::PathBuf;
 
 /// Bits read from files to be hidden are stored at Chunks.
@@ -55,7 +59,8 @@ impl FileContent {
         let source = File::open(source_file)?;
         let mut buf_reader = BufReader::new(&source);
         let mut content: Vec<u8> = Vec::new();
-        buf_reader.read_to_end(&mut content);
+        let _ = buf_reader.read_to_end(&mut content)
+            .expect("Error reading file to hide content.");
         Ok(FileContent {
             source,
             content,
