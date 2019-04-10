@@ -7,15 +7,10 @@
 /// * ICO
 /// * PNM
 use std::fmt;
-//use std::iter::{Iterator, Enumerate};
 use std::iter::Iterator;
-
-//use image::{DynamicImage, GenericImage, GenericImageView};
 use image::{DynamicImage, GenericImageView};
-
 use crate::bytetools::{mask, u24_to_bytes, bytes_to_u24};
 use crate::filereader::Chunk;
-//use crate::extract;
 
 const HEADER_PIXEL_LENGTH: u8 = 32;
 const SIZE_LENGTH: u8 = 32;
