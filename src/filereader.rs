@@ -1,6 +1,6 @@
 /// Module to read file to hide contents.
 ///
-/// Thanks to ContentReader type you can get an iterator to read a file to hide a get its bits
+/// Thanks to ContentReader type you can get an iterator to read a file to hide and get its bits
 /// in predefined bunches. Every bunch of bits are returned inside a Chunk type.
 ///
 /// # Usage example:
@@ -29,7 +29,7 @@ pub struct Chunk {
     /// at natural order (Big Endian) and justified to right.
     pub data: u32,
     /// Number of bits actually stored at data attribute. If you are reading the last few file bits
-    /// tou're probably going read less bits than requested.
+    /// you're probably going read less bits than requested.
     pub length: u8,
     /// An index about relative position of this chunk at file to be hidden.
     pub order: u32,
