@@ -140,8 +140,8 @@ pub struct FileWriter {
 
 impl FileWriter {
     #[must_use]
-    pub fn new(source_file: &str)-> Result<Self, Error> {
-        let destination = File::open(source_file)?;
+    pub fn new(destination_file: &str)-> Result<Self, Error> {
+        let destination = File::open(destination_file)?;
         Ok(FileWriter{destination, pending_byte: 0, pending_byte_written_length: 0})
     }
 
@@ -168,8 +168,10 @@ mod tests {
     use super::*;
     use super::super::test_common::TestEnvironment;
     use std::path::Path;
-    use std::io::Cursor;
+    use std::io::{Cursor, Read};
     use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
+    use ring::digest::{Context, Digest, SHA256};
+
     const MESSAGE: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, \
     sed eiusmod tempor incidunt ut labore et dolore magna aliqua.";
     const SOURCE_FILE: &str = "source.txt";
@@ -230,6 +232,27 @@ mod tests {
             data >> shift - remainder
         }
 
+    }
+
+    /// Hash file content with SHA-256.
+    ///
+    /// This way we can check to files have same content.
+    ///
+    /// Original code got from [Rust Cookbok](https://rust-lang-nursery.github.io/rust-cookbook/cryptography/hashing.html)
+    fn hash(file_path: &str) -> Result<Digest, Error> {
+        let mut reader = BufReader::new(File::open(file_path)?);
+        let mut context = Context::new(&SHA256);
+        let mut buffer = [0; 1024];
+
+        loop {
+            let count = reader.read(&mut buffer)?;
+            if count == 0 {
+                break;
+            }
+            context.update(&buffer[..count]);
+        }
+
+        Ok(context.finish())
     }
 
     #[test]
@@ -309,5 +332,30 @@ mod tests {
         expected_int = normalize(bytes_to_u32(wtr), 12, false);
         // chunk_data = 0b1101_0010_0000
         assert_eq!(expected_int, chunk.data);
+    }
+
+    #[test]
+    fn test_writing_8_bits_chunks() {
+        // Source file creation.
+        let ( source_path,test_env) = get_temporary_test_file();
+        let file_content = FileContent::new(source_path.to_str()
+            .expect("Source file name contains odd characters."))
+            .expect("Error getting file contents");
+        let mut reader = ContentReader::new(&file_content, 4)
+            .expect("There was a problem reading source file.");
+        // Destination file setup.
+        let destination_file_name_path = source_path.join("output.txt").to_str()
+            .expect("Error reading destination file name. Unsupported character might have been used.");
+        {
+            let mut destination_writer = FileWriter::new(destination_file_name_path)
+                .expect("Error happened trying to created FileWriter type.");
+            // Transferring chunks.
+            for chunk in reader {
+                destination_writer.write(chunk);
+            }
+        }   // Here destination_writer.drop() should have been called so remaining bits should
+            // have been written to destination file.
+        // Test destination file has same content than source file.
+
     }
 }
