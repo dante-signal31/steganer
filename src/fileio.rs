@@ -22,6 +22,7 @@ use bitreader::{BitReader, BitReaderError};
 // Write import gets a compiler warning. It warns about importing PathBuf is useless but actually
 // if I remove PathBuf import I get a compiler error in this module code.
 use std::path::PathBuf;
+use image::open;
 
 /// Bits read from files to be hidden are stored at Chunks.
 pub struct Chunk {
@@ -122,6 +123,45 @@ impl<'a> Iterator for ContentReader<'a> {
     }
 }
 
+/// Wrapper over an open file to write into it chunks extracted from host files.
+///
+/// Complete bytes are written at once but border bytes need to be rebuild from two different
+/// chunks, so we need "pending_byte" to use as a temporal container until it is filled
+/// completely and we can write it.
+pub struct FileWriter {
+    /// Destination file to write chunks into.
+    destination: File,
+    /// Buffer byte to write into extracted bits until we have a complete byte to write into
+    /// destination.
+    pending_byte: u8,
+    /// How many bits from left we have written so far into pending_byte.
+    pending_byte_written_length: u8,
+}
+
+impl FileWriter {
+    #[must_use]
+    pub fn new(source_file: &str)-> Result<Self, Error> {
+        let destination = File::open(source_file)?;
+        Ok(FileWriter{destination, pending_byte: 0, pending_byte_written_length: 0})
+    }
+
+    /// Write Chunk into self.destination file.
+    ///
+    /// Actually only complete bytes will be written into file. Incomplete remainder bytes
+    /// will be stored into self.pending_bytes until they fill up.
+    pub fn write(&mut self, chunk: Chunk){
+        unimplemented!()
+    }
+}
+
+impl Drop for FileWriter {
+    /// On drop, self.pending_byte content is considered complete and should be stored
+    /// into self.destination.
+    fn drop(&mut self) {
+        unimplemented!()
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -134,6 +174,7 @@ mod tests {
     sed eiusmod tempor incidunt ut labore et dolore magna aliqua.";
     const SOURCE_FILE: &str = "source.txt";
 
+    /// Called by get_temporaty_test_file() to include some dummy content into test file.
     fn populate_test_file(test_env: &TestEnvironment) -> PathBuf {
         let source_path = Path::new(test_env.path()).join(SOURCE_FILE);
         let mut source_file = File::create(&source_path)
