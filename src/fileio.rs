@@ -5,7 +5,7 @@
 ///
 /// # Usage example:
 /// ```rust
-/// use steganer::filereader::{FileContent, ContentReader};
+/// use steganer::fileio::{FileContent, ContentReader};
 ///
 /// let file_content = FileContent::new("source_file.txt");
 /// let reader = ContentReader::new(&file_content, 4);

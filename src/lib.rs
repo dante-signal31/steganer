@@ -1,7 +1,7 @@
 pub mod argparser;
 pub mod bytetools;
 pub mod configuration;
-pub mod filereader;
+pub mod fileio;
 pub mod stegimage;
 pub mod test_common;
 
