@@ -334,10 +334,8 @@ mod tests {
         assert_eq!(expected_int, chunk.data);
     }
 
-    #[test]
-    fn test_writing_8_bits_chunks() {
+    fn test_writing_n_bits_chunks(chunk_size: u8) {
         // Source file creation.
-        let chunk_size: u8 = 8;
         let ( source_path,test_env) = get_temporary_test_file();
         let file_content = FileContent::new(source_path.to_str()
             .expect("Source file name contains odd characters."))
@@ -364,5 +362,20 @@ mod tests {
             .expect("Something wrong happened when calculating hash for destination file.");
         assert_eq!(source_file_hash.as_ref(), destination_file_hash.as_ref(),
         "Destination file content is not the same as source file content.");
+    }
+
+    #[test]
+    fn test_writing_8_bits_chunks() {
+        test_writing_n_bits_chunks(8);
+    }
+
+    #[test]
+    fn test_writing_4_bits_chunks() {
+        test_writing_n_bits_chunks(4);
+    }
+
+    #[test]
+    fn test_writing_3_bits_chunks() {
+        test_writing_n_bits_chunks(3);
     }
 }
