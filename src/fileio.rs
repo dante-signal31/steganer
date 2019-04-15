@@ -141,7 +141,7 @@ pub struct FileWriter {
 impl FileWriter {
     #[must_use]
     pub fn new(destination_file: &str)-> Result<Self, Error> {
-        let destination = File::open(destination_file)?;
+        let destination = File::create(destination_file)?;
         Ok(FileWriter{destination, pending_byte: 0, pending_byte_written_length: 0})
     }
 
@@ -337,17 +337,18 @@ mod tests {
     #[test]
     fn test_writing_8_bits_chunks() {
         // Source file creation.
+        let chunk_size: u8 = 8;
         let ( source_path,test_env) = get_temporary_test_file();
         let file_content = FileContent::new(source_path.to_str()
             .expect("Source file name contains odd characters."))
             .expect("Error getting file contents");
-        let mut reader = ContentReader::new(&file_content, 4)
+        let mut reader = ContentReader::new(&file_content, chunk_size)
             .expect("There was a problem reading source file.");
         // Destination file setup.
-        let destination_file_name_path = source_path.join("output.txt").to_str()
+        let destination_file_name_path = test_env.path().join("output.txt").into_os_string().into_string()
             .expect("Error reading destination file name. Unsupported character might have been used.");
         {
-            let mut destination_writer = FileWriter::new(destination_file_name_path)
+            let mut destination_writer = FileWriter::new(destination_file_name_path.as_str())
                 .expect("Error happened trying to created FileWriter type.");
             // Transferring chunks.
             for chunk in reader {
@@ -356,6 +357,12 @@ mod tests {
         }   // Here destination_writer.drop() should have been called so remaining bits should
             // have been written to destination file.
         // Test destination file has same content than source file.
-
+        let source_file_hash = hash(source_path.to_str()
+            .expect("Source file name contains odd characters"))
+            .expect("Something wrong happened when calculating hash for source file.");
+        let destination_file_hash = hash(destination_file_name_path.as_str())
+            .expect("Something wrong happened when calculating hash for destination file.");
+        assert_eq!(source_file_hash.as_ref(), destination_file_hash.as_ref(),
+        "Destination file content is not the same as source file content.");
     }
 }
