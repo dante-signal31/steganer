@@ -1,4 +1,4 @@
-/// Module to read file to hide contents.
+/// Module to read file to hide contents and to write extracted content to a destination file.
 ///
 /// Thanks to ContentReader type you can get an iterator to read a file to hide and get its bits
 /// in predefined bunches. Every bunch of bits are returned inside a Chunk type.
@@ -78,6 +78,24 @@ impl Add for Remainder {
     type Output = BinaryAccumulationResult;
 
     fn add(self, rhs: Self) -> Self::Output {
+        let total_length = self.length + rhs.length;
+        if total_length <= 8 {
+            let shifted_bits_to_add = rhs.data << (8 - self.length - rhs.length);
+            let accumulated_bits = self.data + shifted_bits_to_add;
+            if total_length == 8 {
+                BinaryAccumulationResult {
+                    complete_byte: Some(accumulated_bits),
+                    remainder: None,
+                }
+            } else if total_length < 8 {
+                BinaryAccumulationResult {
+                    complete_byte: None,
+                    remainder: Some(Remainder::new(accumulated_bits, total_length)),
+                }
+            }
+        } else {
+
+        }
         unimplemented!()
     }
 }
@@ -199,18 +217,20 @@ impl<'a> Iterator for ContentReader<'a> {
 pub struct FileWriter {
     /// Destination file to write chunks into.
     destination: File,
-    /// Buffer byte to write into extracted bits until we have a complete byte to write into
-    /// destination.
-    pending_byte: u8,
-    /// How many bits from left we have written so far into pending_byte.
-    pending_byte_written_length: u8,
+//    /// Buffer byte to write into extracted bits until we have a complete byte to write into
+//    /// destination.
+//    pending_byte: u8,
+//    /// How many bits from left we have written so far into pending_byte.
+//    pending_byte_written_length: u8,
+    pending_data: Remainder,
 }
 
 impl FileWriter {
     #[must_use]
     pub fn new(destination_file: &str)-> Result<Self, Error> {
         let destination = File::create(destination_file)?;
-        Ok(FileWriter{destination, pending_byte: 0, pending_byte_written_length: 0})
+        let initial_remainder = Remainder::new(0, 0);
+        Ok(FileWriter{destination, pending_data: initial_remainder})
     }
 
     /// Write Chunk into self.destination file.
