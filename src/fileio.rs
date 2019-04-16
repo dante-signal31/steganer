@@ -82,7 +82,7 @@ impl Add for Remainder {
     }
 }
 
-impl Display for Remainder {
+impl Debug for Remainder {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "(data: {}, length: {})",
                self.data, self.length)
@@ -106,7 +106,7 @@ impl Debug for BinaryAccumulationResult  {
             Some(remainder)=> (*remainder).clone(),
             None=> Remainder::new(0,0),
         };
-        write!(f, "(complete_byte: {}, remainder: {})",
+        write!(f, "(complete_byte: {}, remainder: {:?})",
                complete_byte, remainder)
     }
 }
