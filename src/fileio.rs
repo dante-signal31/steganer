@@ -212,6 +212,8 @@ impl FileWriter {
 
     /// Keep in self.pending_byte those bits that are not enough to conform a complete byte.
     ///
+    /// Bits are accumulated until they fill a byte, then they are written to destination file.
+    ///
     /// # Parameters:
     /// * data: Chunk data already left justified and translated to a 3 bytes long array.
     /// * length: How many bits from left are actual data.
