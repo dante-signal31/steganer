@@ -585,5 +585,17 @@ mod tests {
                    "Accumulation with overflow did not worked as we expected. \
                    We expected a remainder of {:?} but we got {:?}",
                    expected_result, result);
+        // Accumulating an exact byte.
+        let remainder1 = Remainder::new(0b_1010_111_u8, 7);
+        let remainder2 = Remainder::new(0b_0_u8, 1);
+        let expected_result = BinaryAccumulationResult{
+            complete_byte: Some(0b_1010_1110_u8),
+            remainder: None,
+        };
+        let result = remainder1 + remainder2;
+        assert_eq!(expected_result, result,
+                   "Accumulation with overflow did not worked as we expected. \
+                   We expected a remainder of {:?} but we got {:?}",
+                   expected_result, result);
     }
 }
