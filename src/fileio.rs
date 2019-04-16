@@ -23,6 +23,8 @@ use bitreader::{BitReader, BitReaderError};
 // if I remove PathBuf import I get a compiler error in this module code.
 use std::path::PathBuf;
 use image::open;
+use crate::bytetools::u24_to_bytes;
+use std::mem::size_of_val;
 
 /// Bits read from files to be hidden are stored at Chunks.
 pub struct Chunk {
@@ -149,7 +151,72 @@ impl FileWriter {
     ///
     /// Actually only complete bytes will be written into file. Incomplete remainder bytes
     /// will be stored into self.pending_bytes until they fill up.
-    pub fn write(&mut self, chunk: Chunk){
+    pub fn write(&mut self, chunk: Chunk)-> std::io::Result<()>{
+        let justified_data = Self::left_justify(chunk.data, chunk.length);
+        let complete_bytes = chunk.length / 8;
+        for i in 0..complete_bytes {
+            self.destination.write(&[justified_data[i as usize]]);
+        }
+        self.store_remainder(justified_data, chunk.length);
+        Ok(())
+    }
+
+    /// Justify at top left given data.
+    ///
+    /// Leftmost 8 bits are discarded, because although an u32 is entered an u24 is returned
+    /// distributed in 3 bytes.
+    ///
+    /// # Parameters:
+    /// * data: u32 containing data.
+    /// * data_length: How many bits are actually useful data.
+    ///
+    /// # Returns:
+    /// * An array of three bytes. Returned u24 leftmost bits are returned in first byte.
+    ///
+    /// # Example:
+    /// ```rust
+    /// let data = 0b_11_u32;
+    /// let returned_data = left_justify(data, 2);
+    /// assert_eq!(0b_1100_0000_u8, returned_data[0]);
+    /// ```
+    fn left_justify(data: u32, data_length: u8)-> [u8; 3]{
+        let left_shift = 24 - data_length; // Remember 8 leftmost bits are discarded.
+        let justified_data = data << left_shift;
+        u24_to_bytes(justified_data)
+    }
+
+    /// Get bits that do not conform complete bytes.
+    ///
+    /// # Parameters:
+    /// * data: Chunk data already left justified and translated to a 3 bytes long array.
+    /// * length: How many bits from left are actual data.
+    ///
+    /// # Returns:
+    /// * An Option containing a tuple:
+    ///     - An u8 with remainder data bits insufficient to conform a byte. Bits are right justified.
+    ///     - An u8 with how many bits of remainder are actual data.
+    /// * None is returned if there is no remainder available (i.e data conforms an integer
+    /// amount of bytes).
+    fn get_remainder(data: [u8; 3], length: u8)-> Option<(u8, u8)>{
+        let remainder_length = length % 8;
+        if remainder_length == 0 {
+            None
+        } else {
+            let complete_bytes = length / 8;
+            let remainder_byte = data[complete_bytes as usize];
+            let right_shift = 8 - remainder_length;
+            let remainder = remainder_byte >> right_shift;
+            Some((remainder, remainder_length))
+        }
+    }
+
+    /// Keep in self.pending_byte those bits that are not enough to conform a complete byte.
+    ///
+    /// # Parameters:
+    /// * data: Chunk data already left justified and translated to a 3 bytes long array.
+    /// * length: How many bits from left are actual data.
+    fn store_remainder(&mut self, data: [u8; 3], length: u8){
+//        let (remainder_bits, remainder_length) = Self::get_remainder(data, length);
         unimplemented!()
     }
 }
@@ -365,6 +432,16 @@ mod tests {
     }
 
     #[test]
+    fn test_writing_23_bits_chunks() {
+        test_writing_n_bits_chunks(23);
+    }
+
+    #[test]
+    fn test_writing_12_bits_chunks() {
+        test_writing_n_bits_chunks(12);
+    }
+
+    #[test]
     fn test_writing_8_bits_chunks() {
         test_writing_n_bits_chunks(8);
     }
@@ -377,5 +454,39 @@ mod tests {
     #[test]
     fn test_writing_3_bits_chunks() {
         test_writing_n_bits_chunks(3);
+    }
+
+    #[test]
+    fn test_left_justify() {
+        let data = 0b_11_u32;
+        let returned_data = FileWriter::left_justify(data, 2);
+        assert_eq!(0b_1100_0000_u8, returned_data[0]);
+    }
+
+    #[test]
+    fn test_get_remainder() {
+        let remainder_byte = 0b_1011_0000_u8;
+        let expected_remainder = 0b_1011_u8;
+        let data_1_byte = [remainder_byte, 0, 0];
+        let data_1_byte_length = 4;
+        let data_2_bytes = [0, remainder_byte, 0];
+        let data_2_bytes_length = 12;
+        let data_3_bytes = [0, 0, remainder_byte];
+        let data_3_bytes_length = 20;
+        let (remainder1, length1) = FileWriter::get_remainder(data_1_byte, data_1_byte_length)
+            .expect("No remainder found");
+        assert_eq!((expected_remainder, 4), (remainder1, length1),
+                   "We did not get expected remainder when analyzing 1 byte case. Expected {:#?}, but got {:#?}.",
+                   (expected_remainder, 4), (remainder1, length1));
+        let (remainder2, length2) = FileWriter::get_remainder(data_2_bytes, data_2_bytes_length)
+            .expect("No remainder found");
+        assert_eq!((expected_remainder, 4), (remainder2, length2),
+                   "We did not get expected remainder when analyzing 2 byte case. Expected {:#?}, but got {:#?}.",
+                   (expected_remainder, 4), (remainder2, length2));
+        let (remainder3, length3) = FileWriter::get_remainder(data_3_bytes, data_3_bytes_length)
+            .expect("No remainder found");
+        assert_eq!((expected_remainder, 4), (remainder3, length3),
+                   "We did not get expected remainder when analyzing 3 bytes case. Expected {:#?}, but got {:#?}.",
+                   (expected_remainder, 4), (remainder3, length3));
     }
 }
