@@ -13,18 +13,25 @@
 ///     // Do things with every chunk of 4 bits of data from source_file.txt.
 /// }
 /// ```
+use std::cmp::Eq;
+use std::fmt;
+use std::fmt::{Display, Debug, Formatter};
 use std::fs::File;
 // Write import gets a compiler warning. It warns about importing Write is useless but actually
 // if I remove Write import I get a compiler error in this module code.
 use std::io::{BufReader, Read, Write, Error};
 use std::iter::Iterator;
-use bitreader::{BitReader, BitReaderError};
+use std::mem::size_of_val;
+use std::ops::Add;
 // Write import gets a compiler warning. It warns about importing PathBuf is useless but actually
 // if I remove PathBuf import I get a compiler error in this module code.
 use std::path::PathBuf;
+
+use bitreader::{BitReader, BitReaderError};
 use image::open;
+
 use crate::bytetools::u24_to_bytes;
-use std::mem::size_of_val;
+
 
 /// Bits read from files to be hidden are stored at Chunks.
 pub struct Chunk {
@@ -42,6 +49,65 @@ impl Chunk {
     #[must_use]
     pub fn new(data: u32, length: u8, order: u32)-> Self {
         Chunk {data, length, order}
+    }
+}
+
+/// Type to represent excess bits that are not enough to conform an entire byte.
+#[derive(PartialEq, Clone)]
+struct Remainder {
+    /// u8 with remainder data bits insufficient to conform a byte. Bits are right justified.
+    data: u8,
+    /// u8 with how many bits of remainder are actual data.
+    length: u8,
+}
+
+impl Remainder {
+    #[must_use]
+    pub fn new(data: u8, length: u8)-> Self{
+        Remainder {data, length}
+    }
+}
+
+/// This Add is not a binary sum but a binary accumulator instead.
+///
+/// RHS bits are accumulated at the end of first operand bits. So this operation is not
+/// commutative. Everything is left justified.
+///
+/// A BinaryAccumulationResult is returned after this operation.
+impl Add for Remainder {
+    type Output = BinaryAccumulationResult;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        unimplemented!()
+    }
+}
+
+impl Display for Remainder {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "(data: {}, length: {})",
+               self.data, self.length)
+    }
+}
+
+/// Type returned after binary accumulate two remainders.
+#[derive(PartialEq)]
+struct BinaryAccumulationResult {
+    complete_byte: Option<u8>,
+    remainder: Option<Remainder>,
+}
+
+impl Debug for BinaryAccumulationResult  {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let complete_byte = match &self.complete_byte {
+            Some(value)=> *value,
+            None=> 0,
+        };
+        let remainder = match &self.remainder {
+            Some(remainder)=> (*remainder).clone(),
+            None=> Remainder::new(0,0),
+        };
+        write!(f, "(complete_byte: {}, remainder: {})",
+               complete_byte, remainder)
     }
 }
 
@@ -192,12 +258,10 @@ impl FileWriter {
     /// * length: How many bits from left are actual data.
     ///
     /// # Returns:
-    /// * An Option containing a tuple:
-    ///     - An u8 with remainder data bits insufficient to conform a byte. Bits are right justified.
-    ///     - An u8 with how many bits of remainder are actual data.
+    /// * A Some(Remainder) if a remainder is available.
     /// * None is returned if there is no remainder available (i.e data conforms an integer
     /// amount of bytes).
-    fn get_remainder(data: [u8; 3], length: u8)-> Option<(u8, u8)>{
+    fn get_remainder(data: [u8; 3], length: u8)-> Option<Remainder>{
         let remainder_length = length % 8;
         if remainder_length == 0 {
             None
@@ -206,7 +270,7 @@ impl FileWriter {
             let remainder_byte = data[complete_bytes as usize];
             let right_shift = 8 - remainder_length;
             let remainder = remainder_byte >> right_shift;
-            Some((remainder, remainder_length))
+            Some(Remainder::new(remainder, remainder_length))
         }
     }
 
@@ -218,8 +282,11 @@ impl FileWriter {
     /// * data: Chunk data already left justified and translated to a 3 bytes long array.
     /// * length: How many bits from left are actual data.
     fn store_remainder(&mut self, data: [u8; 3], length: u8){
-//        let (remainder_bits, remainder_length) = Self::get_remainder(data, length);
-        unimplemented!()
+        if let Some(remainder) = Self::get_remainder(data, length) {
+            unimplemented!()
+        } else {
+            ();
+        }
     }
 }
 
@@ -475,20 +542,48 @@ mod tests {
         let data_2_bytes_length = 12;
         let data_3_bytes = [0, 0, remainder_byte];
         let data_3_bytes_length = 20;
-        let (remainder1, length1) = FileWriter::get_remainder(data_1_byte, data_1_byte_length)
+        let remainder1 = FileWriter::get_remainder(data_1_byte, data_1_byte_length)
             .expect("No remainder found");
-        assert_eq!((expected_remainder, 4), (remainder1, length1),
+        assert_eq!((expected_remainder, 4), (remainder1.data, remainder1.length),
                    "We did not get expected remainder when analyzing 1 byte case. Expected {:#?}, but got {:#?}.",
-                   (expected_remainder, 4), (remainder1, length1));
-        let (remainder2, length2) = FileWriter::get_remainder(data_2_bytes, data_2_bytes_length)
+                   (expected_remainder, 4), (remainder1.data, remainder1.length));
+        let remainder2 = FileWriter::get_remainder(data_2_bytes, data_2_bytes_length)
             .expect("No remainder found");
-        assert_eq!((expected_remainder, 4), (remainder2, length2),
+        assert_eq!((expected_remainder, 4), (remainder2.data, remainder2.length),
                    "We did not get expected remainder when analyzing 2 byte case. Expected {:#?}, but got {:#?}.",
-                   (expected_remainder, 4), (remainder2, length2));
-        let (remainder3, length3) = FileWriter::get_remainder(data_3_bytes, data_3_bytes_length)
+                   (expected_remainder, 4), (remainder2.data, remainder2.length));
+        let remainder3 = FileWriter::get_remainder(data_3_bytes, data_3_bytes_length)
             .expect("No remainder found");
-        assert_eq!((expected_remainder, 4), (remainder3, length3),
+        assert_eq!((expected_remainder, 4), (remainder3.data, remainder3.length),
                    "We did not get expected remainder when analyzing 3 bytes case. Expected {:#?}, but got {:#?}.",
-                   (expected_remainder, 4), (remainder3, length3));
+                   (expected_remainder, 4), (remainder3.data, remainder3.length));
+    }
+
+    #[test]
+    fn test_add_remainder() {
+        // Accumulating without overflow.
+        let remainder1 = Remainder::new(0b_101_u8, 3);
+        let remainder2 = Remainder::new(0b_11_u8, 2);
+        let expected_result = BinaryAccumulationResult{
+            complete_byte: None,
+            remainder: Some(Remainder::new(0b_10111_u8, 5))
+        };
+        let result = remainder1 + remainder2;
+        assert_eq!(expected_result, result,
+                   "Accumulation without overflow did not worked as we expected. \
+                   We expected a remainder of {:?} but we got {:?}",
+                   expected_result, result);
+        // Accumulating with overflow.
+        let remainder1 = Remainder::new(0b_1010_111_u8, 7);
+        let remainder2 = Remainder::new(0b_011_u8, 3);
+        let expected_result = BinaryAccumulationResult{
+            complete_byte: Some(0b_1010_1110_u8),
+            remainder: Some(Remainder::new(0b_11_u8, 2))
+        };
+        let result = remainder1 + remainder2;
+        assert_eq!(expected_result, result,
+                   "Accumulation with overflow did not worked as we expected. \
+                   We expected a remainder of {:?} but we got {:?}",
+                   expected_result, result);
     }
 }
