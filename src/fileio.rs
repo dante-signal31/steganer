@@ -591,7 +591,7 @@ mod tests {
     fn test_add_remainder() {
         // Accumulating without overflow.
         let remainder1 = Remainder::new(0b_101_0_0000_u8, 3);
-        let remainder2 = Remainder::new(0b_11_00_0000_u8, 2);
+        let remainder2 = Remainder::new(0b_11_u8, 2);
         let expected_result = BinaryAccumulationResult{
             complete_byte: None,
             remainder: Some(Remainder::new(0b_1011_1_000_u8, 5))
@@ -603,7 +603,7 @@ mod tests {
                    expected_result, result);
         // Accumulating with overflow.
         let remainder1 = Remainder::new(0b_1010_111_0_u8, 7);
-        let remainder2 = Remainder::new(0b_011_0_0000_u8, 3);
+        let remainder2 = Remainder::new(0b_011_u8, 3);
         let expected_result = BinaryAccumulationResult{
             complete_byte: Some(0b_1010_1110_u8),
             remainder: Some(Remainder::new(0b_11_00_0000_u8, 2))
@@ -615,7 +615,7 @@ mod tests {
                    expected_result, result);
         // Accumulating an exact byte.
         let remainder1 = Remainder::new(0b_1010_111_0_u8, 7);
-        let remainder2 = Remainder::new(0b_0_000_0000_u8, 1);
+        let remainder2 = Remainder::new(0b_0_u8, 1);
         let expected_result = BinaryAccumulationResult{
             complete_byte: Some(0b_1010_1110_u8),
             remainder: None,
