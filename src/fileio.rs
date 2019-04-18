@@ -30,7 +30,7 @@ use std::path::PathBuf;
 use bitreader::{BitReader, BitReaderError};
 use image::open;
 
-use crate::bytetools::u24_to_bytes;
+use crate::bytetools::{u24_to_bytes, mask};
 
 
 /// Bits read from files to be hidden are stored at Chunks.
@@ -87,16 +87,24 @@ impl Add for Remainder {
                     complete_byte: Some(accumulated_bits),
                     remainder: None,
                 }
-            } else if total_length < 8 {
+            } else {
                 BinaryAccumulationResult {
                     complete_byte: None,
                     remainder: Some(Remainder::new(accumulated_bits, total_length)),
                 }
             }
         } else {
-
+            let shifted_left_hand_side_bits = (self.data as u16) << 8;
+            let shifted_bits_to_add = (rhs.data as u16) << (16 - self.length - rhs.length);
+            let accumulated_bits = shifted_left_hand_side_bits + shifted_bits_to_add;
+            let remainder_length = total_length - 8;
+            let complete_byte = ((accumulated_bits & (!mask(8, false) as u16)) >> 8) as u8;
+            let remainder_bits = (accumulated_bits & (mask(8-remainder_length, true) as u16)) as u8;
+            BinaryAccumulationResult {
+                complete_byte: Some(complete_byte),
+                remainder: Some(Remainder::new(remainder_bits, remainder_length)),
+            }
         }
-        unimplemented!()
     }
 }
 
@@ -582,11 +590,11 @@ mod tests {
     #[test]
     fn test_add_remainder() {
         // Accumulating without overflow.
-        let remainder1 = Remainder::new(0b_101_u8, 3);
-        let remainder2 = Remainder::new(0b_11_u8, 2);
+        let remainder1 = Remainder::new(0b_101_0_0000_u8, 3);
+        let remainder2 = Remainder::new(0b_11_00_0000_u8, 2);
         let expected_result = BinaryAccumulationResult{
             complete_byte: None,
-            remainder: Some(Remainder::new(0b_10111_u8, 5))
+            remainder: Some(Remainder::new(0b_1011_1_000_u8, 5))
         };
         let result = remainder1 + remainder2;
         assert_eq!(expected_result, result,
@@ -594,11 +602,11 @@ mod tests {
                    We expected a remainder of {:?} but we got {:?}",
                    expected_result, result);
         // Accumulating with overflow.
-        let remainder1 = Remainder::new(0b_1010_111_u8, 7);
-        let remainder2 = Remainder::new(0b_011_u8, 3);
+        let remainder1 = Remainder::new(0b_1010_111_0_u8, 7);
+        let remainder2 = Remainder::new(0b_011_0_0000_u8, 3);
         let expected_result = BinaryAccumulationResult{
             complete_byte: Some(0b_1010_1110_u8),
-            remainder: Some(Remainder::new(0b_11_u8, 2))
+            remainder: Some(Remainder::new(0b_11_00_0000_u8, 2))
         };
         let result = remainder1 + remainder2;
         assert_eq!(expected_result, result,
@@ -606,8 +614,8 @@ mod tests {
                    We expected a remainder of {:?} but we got {:?}",
                    expected_result, result);
         // Accumulating an exact byte.
-        let remainder1 = Remainder::new(0b_1010_111_u8, 7);
-        let remainder2 = Remainder::new(0b_0_u8, 1);
+        let remainder1 = Remainder::new(0b_1010_111_0_u8, 7);
+        let remainder2 = Remainder::new(0b_0_000_0000_u8, 1);
         let expected_result = BinaryAccumulationResult{
             complete_byte: Some(0b_1010_1110_u8),
             remainder: None,
