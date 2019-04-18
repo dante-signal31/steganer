@@ -30,7 +30,7 @@ use std::path::PathBuf;
 use bitreader::{BitReader, BitReaderError};
 use image::open;
 
-use crate::bytetools::{u24_to_bytes, mask};
+use crate::bytetools::{u24_to_bytes, mask, bytes_to_u24};
 
 
 /// Bits read from files to be hidden are stored at Chunks.
@@ -74,10 +74,13 @@ impl Remainder {
 /// commutative. Everything is left justified.
 ///
 /// A BinaryAccumulationResult is returned after this operation.
-impl Add for Remainder {
+///
+/// This implementation was possible thanks to
+/// [this Stackoverflow post](https://stackoverflow.com/questions/28005134/how-do-i-implement-the-add-trait-for-a-reference-to-a-struct)
+impl<'a, 'b> Add<&'b Remainder> for &'a Remainder {
     type Output = BinaryAccumulation;
 
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(self, rhs: &'b Remainder) -> Self::Output {
         let total_length = self.length + rhs.length;
         if total_length <= 8 {
             let shifted_bits_to_add = rhs.data << (8 - self.length - rhs.length);
@@ -248,11 +251,11 @@ impl FileWriter {
     /// it is written and replaced by new exceeding bits.
     pub fn write(&mut self, chunk: Chunk)-> std::io::Result<()>{
         let justified_data = Self::left_justify(chunk.data, chunk.length);
-        let complete_bytes = chunk.length / 8;
-        for i in 0..complete_bytes {
-            self.destination.write(&[justified_data[i as usize]]);
-        }
-        if let Some(complete_byte) = self.store_remainder(justified_data, chunk.length){
+//        let complete_bytes = chunk.length / 8;
+//        for i in 0..complete_bytes {
+//            self.destination.write(&[justified_data[i as usize]]);
+//        }
+        if let Some(complete_byte) = self.store_remainder(&justified_data, chunk.length){
             self.destination.write(&[complete_byte]);
         }
         Ok(())
@@ -318,8 +321,37 @@ impl FileWriter {
     /// # Returns:
     /// * Optionally returns a complete byte if adding remainder to self.pending_data fills
     /// last one. if that does not happen a None i returned instead.
-    fn store_remainder(&mut self, data: &[u8; 3], length: u8)-> Option<u8> {
-        unimplemented!()
+    fn store_remainder(&mut self, data: &[u8; 3], length: u8)-> Option<Vec<u8>> {
+        let data_int = bytes_to_u24(data)
+            .expect("problem happened when converting chung data bytes to u32");
+        let data_appended_to_remainder: u32 = self.pending_data.data + (data_int << (8 - self.pending_data.length));
+        let total_length = self.pending_data.length + length;
+        let complete_bytes = total_length / 8;
+        let remainder_bits = total_length % 8;
+        let mut returned_option = None;
+        let mut returned_complete_bytes: Vec<u8> = Vec::new();
+        if complete_bytes > 0 {
+            returned_complete_bytes.extend_from_slice(data[0..complete_bytes]);
+            returned_option = Some(returned_complete_bytes);
+        }
+        returned_option
+
+
+//        if let Some(remainder) = Self::get_remainder(data, length) {
+//            let accumulated_bits = &self.pending_data + &remainder;
+//            if let Some(remainder) = accumulated_bits.remainder {
+//                self.pending_data = remainder;
+//            }
+//            if let Some(complete_byte) = accumulated_bits.complete_byte {
+//                Some(complete_byte)
+//            } else {
+//                None
+//            }
+//        } else {
+//            // Entered data is composed of an integer amount of bytes, so no remainder is generated
+//            // that should be stored, nor we fill any byte at all.
+//            None
+//        }
     }
 }
 
@@ -576,17 +608,17 @@ mod tests {
         let data_2_bytes_length = 12;
         let data_3_bytes = [0, 0, remainder_byte];
         let data_3_bytes_length = 20;
-        let remainder1 = FileWriter::get_remainder(data_1_byte, data_1_byte_length)
+        let remainder1 = FileWriter::get_remainder(&data_1_byte, data_1_byte_length)
             .expect("No remainder found");
         assert_eq!((expected_remainder, 4), (remainder1.data, remainder1.length),
                    "We did not get expected remainder when analyzing 1 byte case. Expected {:#?}, but got {:#?}.",
                    (expected_remainder, 4), (remainder1.data, remainder1.length));
-        let remainder2 = FileWriter::get_remainder(data_2_bytes, data_2_bytes_length)
+        let remainder2 = FileWriter::get_remainder(&data_2_bytes, data_2_bytes_length)
             .expect("No remainder found");
         assert_eq!((expected_remainder, 4), (remainder2.data, remainder2.length),
                    "We did not get expected remainder when analyzing 2 byte case. Expected {:#?}, but got {:#?}.",
                    (expected_remainder, 4), (remainder2.data, remainder2.length));
-        let remainder3 = FileWriter::get_remainder(data_3_bytes, data_3_bytes_length)
+        let remainder3 = FileWriter::get_remainder(&data_3_bytes, data_3_bytes_length)
             .expect("No remainder found");
         assert_eq!((expected_remainder, 4), (remainder3.data, remainder3.length),
                    "We did not get expected remainder when analyzing 3 bytes case. Expected {:#?}, but got {:#?}.",
@@ -602,7 +634,7 @@ mod tests {
             complete_byte: None,
             remainder: Some(Remainder::new(0b_1011_1_000_u8, 5))
         };
-        let result = remainder1 + remainder2;
+        let result = &remainder1 + &remainder2;
         assert_eq!(expected_result, result,
                    "Accumulation without overflow did not worked as we expected. \
                    We expected a remainder of {:?} but we got {:?}",
@@ -614,7 +646,7 @@ mod tests {
             complete_byte: Some(0b_1010_1110_u8),
             remainder: Some(Remainder::new(0b_11_00_0000_u8, 2))
         };
-        let result = remainder1 + remainder2;
+        let result = &remainder1 + &remainder2;
         assert_eq!(expected_result, result,
                    "Accumulation with overflow did not worked as we expected. \
                    We expected a remainder of {:?} but we got {:?}",
@@ -626,7 +658,7 @@ mod tests {
             complete_byte: Some(0b_1010_1110_u8),
             remainder: None,
         };
-        let result = remainder1 + remainder2;
+        let result = &remainder1 + &remainder2;
         assert_eq!(expected_result, result,
                    "Accumulation with overflow did not worked as we expected. \
                    We expected a remainder of {:?} but we got {:?}",
@@ -636,6 +668,7 @@ mod tests {
     #[test]
     fn test_store_remainder() {
         // Destination file setup.
+        let ( _,test_env) = get_temporary_test_file();
         let destination_file_name_path = test_env.path().join("output.txt").into_os_string().into_string()
             .expect("Error reading destination file name. Unsupported character might have been used.");
         {
@@ -648,13 +681,13 @@ mod tests {
             let remainder2 = 0b_11_u8;
             let expected_result = 0b_1011_1_000_u8;
             destination_writer.pending_data = remainder1;
-            if let Some(complete_byte) = destination_writer.store_remainder(&[0,0,remainder], 2) {
+            if let Some(complete_byte) = destination_writer.store_remainder(&[0,0,remainder2], 2) {
                 assert!(false, "A complete byte was returned when no remainder fill was expected.");
             } else {
                 let result = destination_writer.pending_data.data;
                 assert_eq!(expected_result, result,
                            "Store remainder without overflow did not worked as we expected. \
-                        We expected a remainder of {:#b} but we got {:#b}",
+                            We expected a remainder of {:#b} but we got {:#b}",
                            expected_result, result);
             }
             // Accumulating with overflow.
@@ -663,7 +696,7 @@ mod tests {
             let expected_result = 0b_11_00_0000_u8;
             let expected_complete_byte = 0b_1010_1110_u8;
             destination_writer.pending_data = remainder1;
-            if let Some(complete_byte) = destination_writer.store_remainder(&[0,0,remainder], 3){
+            if let Some(complete_byte) = destination_writer.store_remainder(&[0,0,remainder2], 3){
                 let result = destination_writer.pending_data.data;
                 assert_eq!(expected_result, result,
                            "Store remainder with overflow did not worked as we expected. \
@@ -682,7 +715,7 @@ mod tests {
             let expected_result = 0b_0_u8;
             let expected_complete_byte = 0b_1010_1110_u8;
             destination_writer.pending_data = remainder1;
-            if let Some(complete_byte) = destination_writer.store_remainder(&[0,0,remainder], 1){
+            if let Some(complete_byte) = destination_writer.store_remainder(&[0,0,remainder2], 1){
                 let result = destination_writer.pending_data.data;
                 assert_eq!(expected_result, result,
                            "Store remainder to accumulate an exact did not worked as we expected. \
@@ -695,7 +728,6 @@ mod tests {
             } else {
                 assert!(false, "We were expecting to fill remainder but no complete byte was returned.");
             }
-
         }
     }
 }
