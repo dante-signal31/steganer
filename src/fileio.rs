@@ -30,7 +30,7 @@ use std::path::PathBuf;
 use bitreader::{BitReader, BitReaderError};
 use image::open;
 
-use crate::bytetools::{u24_to_bytes, mask, bytes_to_u24};
+use crate::bytetools::{u24_to_bytes, mask, bytes_to_u24, get_bits};
 
 
 /// Bits read from files to be hidden are stored at Chunks.
@@ -228,11 +228,8 @@ impl<'a> Iterator for ContentReader<'a> {
 pub struct FileWriter {
     /// Destination file to write chunks into.
     destination: File,
-//    /// Buffer byte to write into extracted bits until we have a complete byte to write into
-//    /// destination.
-//    pending_byte: u8,
-//    /// How many bits from left we have written so far into pending_byte.
-//    pending_byte_written_length: u8,
+    /// Buffer to write into extracted bits until we have a complete byte to write into
+    /// destination.
     pending_data: Remainder,
 }
 
@@ -250,13 +247,10 @@ impl FileWriter {
     /// will be stored into self.pending_bytes until they fill up. When pending_bytes fills
     /// it is written and replaced by new exceeding bits.
     pub fn write(&mut self, chunk: Chunk)-> std::io::Result<()>{
-        let justified_data = Self::left_justify(chunk.data, chunk.length);
-//        let complete_bytes = chunk.length / 8;
-//        for i in 0..complete_bytes {
-//            self.destination.write(&[justified_data[i as usize]]);
-//        }
-        if let Some(complete_byte) = self.store_remainder(&justified_data, chunk.length){
-            self.destination.write(&[complete_byte]);
+        if let Some(complete_bytes) = self.store_remainder(&chunk){
+            for byte in complete_bytes.iter(){
+                self.destination.write(&[*byte]);
+            }
         }
         Ok(())
     }
@@ -288,78 +282,106 @@ impl FileWriter {
     /// Get bits that do not conform complete bytes.
     ///
     /// # Parameters:
-    /// * data: Chunk data already left justified and translated to a 3 bytes long array.
+    /// * data: Chunk data already left justified.
     /// * length: How many bits from left are actual data.
     ///
     /// # Returns:
     /// * A Some(Remainder) if a remainder is available.
     /// * None is returned if there is no remainder available (i.e data conforms an integer
     /// amount of bytes).
-    fn get_remainder(data: &[u8; 3], length: u8)-> Option<Remainder>{
+    fn get_remainder(data: u32, length: u8)-> Option<Remainder>{
         let remainder_length = length % 8;
         if remainder_length == 0 {
             None
         } else {
             let complete_bytes = length / 8;
-            let remainder_byte = data[complete_bytes as usize];
-            let right_shift = 8 - remainder_length;
-            let remainder = remainder_byte >> right_shift;
-            Some(Remainder::new(remainder, remainder_length))
+            let remainder_bits = get_bits(data, complete_bytes*8, remainder_length) as u8;
+            let left_justified_remainder_bits = remainder_bits << (8 - remainder_length);
+            Some(Remainder::new(left_justified_remainder_bits, remainder_length))
         }
+    }
+
+    /// Take data bits and return a vector with its bytes.
+    ///
+    /// # Parameters:
+    /// * data: Left justified u32 with data bits.
+    /// * length: How many bits from left are actual data.
+    ///
+    /// # Returns:
+    /// * Vector with bytes extracted from data.
+    fn get_bytes(data: u32, length: u8)-> Option<Vec<u8>>{
+        let complete_bytes = length / 8;
+        let mut returned_complete_bytes: Vec<u8> = Vec::new();
+        if complete_bytes > 0 {
+            for i in 0..=complete_bytes{
+                let extracted_byte = get_bits(data, i*8, 8) as u8;
+                returned_complete_bytes.extend_from_slice(&[extracted_byte]);
+            }
+            Some(returned_complete_bytes)
+        } else {
+            None
+        }
+    }
+
+    /// Called by store_remainder() to get a left justified u32 with current remainder with
+    /// chunk data appended.
+    ///
+    /// # Parameters:
+    /// * chunk: Chunk to append.
+    ///
+    /// # Returns:
+    /// * u32 with left justified current remainder with chunk data appended.
+    /// * u8 how many bits from left are actual data.
+    fn append_to_remainder(&self, chunk: &Chunk)-> (u32, u8){
+        let left_justified_data = Self::left_justify(chunk.data, chunk.length);
+        let data_int = bytes_to_u24(&left_justified_data);
+        let pending_data_left_justified = (self.pending_data.data as u32) << (32 - 8);
+        let data_appended_to_remainder: u32 = pending_data_left_justified + (data_int << (8 - self.pending_data.length));
+        let total_length = self.pending_data.length + chunk.length;
+        (data_appended_to_remainder, total_length)
     }
 
     /// Keep in self.pending_data those bits that are not enough to conform a complete byte.
     ///
     /// Bits are accumulated until they fill a byte. If adding bits to self.pending data fills
-    /// an entire byte, then that byte is returned and excess bits become the new self.pending
-    /// data.
+    /// entire bytes, then those bytes are returned in a vector and excess bits become the
+    /// new self.pending_data.
     ///
     /// # Parameters:
-    /// * data: Chunk data already left justified and translated to a 3 bytes long array.
-    /// * length: How many bits from left are actual data.
+    /// * chunk: Chunk to be written.
     ///
     /// # Returns:
-    /// * Optionally returns a complete byte if adding remainder to self.pending_data fills
-    /// last one. if that does not happen a None i returned instead.
-    fn store_remainder(&mut self, data: &[u8; 3], length: u8)-> Option<Vec<u8>> {
-        let data_int = bytes_to_u24(data)
-            .expect("problem happened when converting chung data bytes to u32");
-        let data_appended_to_remainder: u32 = self.pending_data.data + (data_int << (8 - self.pending_data.length));
-        let total_length = self.pending_data.length + length;
-        let complete_bytes = total_length / 8;
-        let remainder_bits = total_length % 8;
-        let mut returned_option = None;
-        let mut returned_complete_bytes: Vec<u8> = Vec::new();
-        if complete_bytes > 0 {
-            returned_complete_bytes.extend_from_slice(data[0..complete_bytes]);
-            returned_option = Some(returned_complete_bytes);
+    /// * Optionally returns a vector with complete bytes if adding remainder to self.pending_data fills
+    /// any. If that does not happen a None is returned instead.
+    fn store_remainder(&mut self, chunk: &Chunk)-> Option<Vec<u8>> {
+        let (data_appended_to_remainder, total_length) = self.append_to_remainder(chunk);
+        if let Some(new_remainder) = Self::get_remainder(data_appended_to_remainder, total_length){
+            let non_remainder_length = total_length - new_remainder.length;
+            self.pending_data = new_remainder;
+            if non_remainder_length == 0 {
+                // Only remainder. No entire bytes.
+                None
+            } else {
+                // Remainder and entire bytes.
+                // I don't use get_bits() because I want to keep non_remainder_data left justified.
+                let non_remainder_data = data_appended_to_remainder & mask(32-non_remainder_length, true);
+                Some(Self::get_bytes(non_remainder_data, non_remainder_length)
+                    .expect("Could not extract any byte from provided data"))
+            }
+        } else {
+            // Only entire bytes. No remainder left.
+            self.pending_data = Remainder::new(0,0);
+            Some(Self::get_bytes(data_appended_to_remainder, total_length)
+                .expect("Could not extract any byte from provided data"))
         }
-        returned_option
-
-
-//        if let Some(remainder) = Self::get_remainder(data, length) {
-//            let accumulated_bits = &self.pending_data + &remainder;
-//            if let Some(remainder) = accumulated_bits.remainder {
-//                self.pending_data = remainder;
-//            }
-//            if let Some(complete_byte) = accumulated_bits.complete_byte {
-//                Some(complete_byte)
-//            } else {
-//                None
-//            }
-//        } else {
-//            // Entered data is composed of an integer amount of bytes, so no remainder is generated
-//            // that should be stored, nor we fill any byte at all.
-//            None
-//        }
     }
 }
 
 impl Drop for FileWriter {
-    /// On drop, self.pending_byte content is considered complete and should be stored
+    /// On drop, self.pending_data content is considered complete and should be stored
     /// into self.destination.
     fn drop(&mut self) {
-        unimplemented!()
+        self.destination.write(&[self.pending_data.data]);
     }
 }
 
@@ -600,25 +622,24 @@ mod tests {
 
     #[test]
     fn test_get_remainder() {
-        let remainder_byte = 0b_1011_0000_u8;
-        let expected_remainder = 0b_1011_u8;
-        let data_1_byte = [remainder_byte, 0, 0];
-        let data_1_byte_length = 4;
-        let data_2_bytes = [0, remainder_byte, 0];
-        let data_2_bytes_length = 12;
-        let data_3_bytes = [0, 0, remainder_byte];
-        let data_3_bytes_length = 20;
-        let remainder1 = FileWriter::get_remainder(&data_1_byte, data_1_byte_length)
+        let expected_remainder = 0b_1011_0000_u8;
+        let data_1_length = 4_u8;
+        let data_1 = (expected_remainder as u32) << (32 - data_1_length - 4);
+        let data_2_length = 12_u8;
+        let data_2 = (expected_remainder as u32) << (32 - data_2_length - 4);
+        let data_3_length = 20_u8;
+        let data_3 = (expected_remainder as u32) << (32 - data_3_length - 4);
+        let remainder1 = FileWriter::get_remainder(data_1, data_1_length)
             .expect("No remainder found");
         assert_eq!((expected_remainder, 4), (remainder1.data, remainder1.length),
                    "We did not get expected remainder when analyzing 1 byte case. Expected {:#?}, but got {:#?}.",
                    (expected_remainder, 4), (remainder1.data, remainder1.length));
-        let remainder2 = FileWriter::get_remainder(&data_2_bytes, data_2_bytes_length)
+        let remainder2 = FileWriter::get_remainder(data_2, data_2_length)
             .expect("No remainder found");
         assert_eq!((expected_remainder, 4), (remainder2.data, remainder2.length),
                    "We did not get expected remainder when analyzing 2 byte case. Expected {:#?}, but got {:#?}.",
                    (expected_remainder, 4), (remainder2.data, remainder2.length));
-        let remainder3 = FileWriter::get_remainder(&data_3_bytes, data_3_bytes_length)
+        let remainder3 = FileWriter::get_remainder(data_3, data_3_length)
             .expect("No remainder found");
         assert_eq!((expected_remainder, 4), (remainder3.data, remainder3.length),
                    "We did not get expected remainder when analyzing 3 bytes case. Expected {:#?}, but got {:#?}.",
@@ -678,10 +699,10 @@ mod tests {
                 .expect("Error happened trying to created FileWriter type.");
             // Accumulating without overflow.
             let remainder1 = Remainder::new(0b_101_0_0000_u8, 3);
-            let remainder2 = 0b_11_u8;
+            let remainder2 = Chunk::new(0b_11, 2, 1);
             let expected_result = 0b_1011_1_000_u8;
             destination_writer.pending_data = remainder1;
-            if let Some(complete_byte) = destination_writer.store_remainder(&[0,0,remainder2], 2) {
+            if let Some(complete_byte) = destination_writer.store_remainder(&remainder2) {
                 assert!(false, "A complete byte was returned when no remainder fill was expected.");
             } else {
                 let result = destination_writer.pending_data.data;
@@ -692,42 +713,121 @@ mod tests {
             }
             // Accumulating with overflow.
             let remainder1 = Remainder::new(0b_1010_111_0_u8, 7);
-            let remainder2 = 0b_011_u8;
+            let remainder2 = Chunk::new(0b_011, 3, 1);
             let expected_result = 0b_11_00_0000_u8;
             let expected_complete_byte = 0b_1010_1110_u8;
             destination_writer.pending_data = remainder1;
-            if let Some(complete_byte) = destination_writer.store_remainder(&[0,0,remainder2], 3){
+            if let Some(complete_byte) = destination_writer.store_remainder(&remainder2){
                 let result = destination_writer.pending_data.data;
                 assert_eq!(expected_result, result,
                            "Store remainder with overflow did not worked as we expected. \
                             We expected a remainder of {:#b} but we got {:#b}",
                            expected_result, result);
-                assert_eq!(expected_complete_byte, complete_byte,
+                assert_eq!(expected_complete_byte, complete_byte[0],
                            "Recovered complete byte was not what we were expecting. \
                            We expected {:#b} but we got {:#b}",
-                           expected_complete_byte, complete_byte);
+                           expected_complete_byte, complete_byte[0]);
             } else {
                 assert!(false, "We were expecting to fill remainder but no complete byte was returned.");
             }
             // Accumulating an exact byte.
             let remainder1 = Remainder::new(0b_1010_111_0_u8, 7);
-            let remainder2 = 0b_0_u8;
+            let remainder2 = Chunk::new(0b_0, 1, 1);
             let expected_result = 0b_0_u8;
             let expected_complete_byte = 0b_1010_1110_u8;
             destination_writer.pending_data = remainder1;
-            if let Some(complete_byte) = destination_writer.store_remainder(&[0,0,remainder2], 1){
+            if let Some(complete_byte) = destination_writer.store_remainder(&remainder2){
                 let result = destination_writer.pending_data.data;
                 assert_eq!(expected_result, result,
                            "Store remainder to accumulate an exact did not worked as we expected. \
                             We expected a remainder of {:#b} but we got {:#b}",
                            expected_result, result);
-                assert_eq!(expected_complete_byte, complete_byte,
+                assert_eq!(expected_complete_byte, complete_byte[0],
                            "Recovered complete byte was not what we were expecting. \
                            We expected {:#b} but we got {:#b}",
-                           expected_complete_byte, complete_byte);
+                           expected_complete_byte, complete_byte[0]);
             } else {
                 assert!(false, "We were expecting to fill remainder but no complete byte was returned.");
             }
+        }
+    }
+
+    #[test]
+    fn test_get_bytes() {
+        // Not enough bits to fill a byte.
+        let data_incomplete_byte_length = 5_u8;
+        let data_incomplete_byte = (0b_1_0101 as u32) << (32 - data_incomplete_byte_length);
+        if let None = FileWriter::get_bytes(data_incomplete_byte, data_incomplete_byte_length) {
+            assert!(true);
+        }
+        // Enough bits to fill a byte and partially a second.
+        let data_up_to_second_byte_length = 13_u8;
+        let data_up_to_second_byte = (0b_1_0101 as u32) << (32 - data_up_to_second_byte_length);
+        if let Some(bytes) = FileWriter::get_bytes(data_up_to_second_byte, data_up_to_second_byte_length) {
+            assert_eq!(0_u8, bytes[0],
+                       "Recovered first byte was not what we were expecting. Expected {} but got {}.",
+                       0_u8, bytes[0]);
+            assert_eq!(0b_1010_1000_u8, bytes[1],
+                       "Recovered second byte was not what we were expecting. Expected {} but got {}.",
+                       0b_1010_1000_u8, bytes[1]);
+        }
+        // Enough bits to fill two bytes and partially a third.
+        let data_up_to_third_byte_length = 21_u8;
+        let data_up_to_third_byte = (0b_1_0101 as u32) << (32 - data_up_to_third_byte_length);
+        if let Some(bytes) = FileWriter::get_bytes(data_up_to_third_byte, data_up_to_third_byte_length) {
+            assert_eq!(0_u8, bytes[0],
+                       "Recovered first byte was not what we were expecting. Expected {} but got {}.",
+                       0_u8, bytes[0]);
+            assert_eq!(0_u8, bytes[1],
+                       "Recovered second byte was not what we were expecting. Expected {} but got {}.",
+                       0_u8, bytes[1]);
+            assert_eq!(0b_1010_1000_u8, bytes[2],
+                       "Recovered third byte was not what we were expecting. Expected {} but got {}.",
+                       0b_1010_1000_u8, bytes[2]);
+        }
+        // Enough bits to fill three bytes and partially a fourth.
+        let data_up_to_fourth_byte_length = 29_u8;
+        let data_up_to_fourth_byte = (0b_1_0101 as u32) << (32 - data_up_to_fourth_byte_length);
+        if let Some(bytes) = FileWriter::get_bytes(data_up_to_fourth_byte, data_up_to_fourth_byte_length) {
+            assert_eq!(0_u8, bytes[0],
+                       "Recovered first byte was not what we were expecting. Expected {} but got {}.",
+                       0_u8, bytes[0]);
+            assert_eq!(0_u8, bytes[1],
+                       "Recovered second byte was not what we were expecting. Expected {} but got {}.",
+                       0_u8, bytes[1]);
+            assert_eq!(0_u8, bytes[2],
+                       "Recovered third byte was not what we were expecting. Expected {} but got {}.",
+                       0_u8, bytes[2]);
+            assert_eq!(0b_1010_1000_u8, bytes[3],
+                       "Recovered fourth byte was not what we were expecting. Expected {} but got {}.",
+                       0b_1010_1000_u8, bytes[3]);
+        }
+    }
+
+    #[test]
+    fn test_append_to_remainder() {
+        // Destination file setup.
+        let ( _,test_env) = get_temporary_test_file();
+        let destination_file_name_path = test_env.path().join("output.txt").into_os_string().into_string()
+            .expect("Error reading destination file name. Unsupported character might have been used.");
+        {
+            // We enclose destination_writer in its own scope so drop() is called at that scope end
+            // to write remaining bits to destination file.
+            let mut destination_writer = FileWriter::new(destination_file_name_path.as_str())
+                .expect("Error happened trying to created FileWriter type.");
+            let current_remainder_length = 7_u8;
+            let current_remainder = 0b_1010_1110_u8;
+            destination_writer.pending_data = Remainder::new(current_remainder, current_remainder_length);
+            let chunk = Chunk::new(0b_011, 3, 1);
+            let expected_appended_remainder_length = 10_u8;
+            let expected_appended_remainder = 0b_1010_1110_11_u32 << 32 - expected_appended_remainder_length;
+            let (appended_remainder, appended_remainder_length) = destination_writer.append_to_remainder(&chunk);
+            assert_eq!(expected_appended_remainder, appended_remainder,
+                       "Appended remainder is not what we were expecting. Expected {} but got {}.",
+                       expected_appended_remainder, appended_remainder);
+            assert_eq!(expected_appended_remainder_length, appended_remainder_length,
+                       "Appended remainder length is not what we were expecting. Expected {} but got {}.",
+                       expected_appended_remainder_length, appended_remainder_length);
         }
     }
 }
