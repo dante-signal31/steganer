@@ -203,20 +203,25 @@ impl<'a> Iterator for ContentReader<'a> {
         let chunk = match self.bit_reader.read_u32(self.chunk_size) {
             Ok(bits)=> {
                 self.position += 1;
-                Chunk::new(bits, self.chunk_size, self.position)
+                Some(Chunk::new(bits, self.chunk_size, self.position))
             }
             Err(e)=> {
-                if let BitReaderError::NotEnoughData {position: _, length, requested: _} = e {
-                    let bits = self.bit_reader.read_u32(length as u8)
-                        .expect("Error reading last few bits from file to be hidden.");
-                    self.position += 1;
-                    Chunk::new(bits, length as u8, self.position)
+                if let BitReaderError::NotEnoughData {position, length, requested: _ } = e {
+                    let available_bits = length - position;
+                    if available_bits > 0 {
+                        let bits = self.bit_reader.read_u32(length as u8)
+                            .expect("Error reading last few bits from file to be hidden.");
+                        self.position += 1;
+                        Some(Chunk::new(bits, length as u8, self.position))
+                    } else {
+                        None
+                    }
                 } else {
                     panic!("Error reading data to be hidden");
                 }
             }
         };
-        Some(chunk)
+        chunk
     }
 }
 
