@@ -3,15 +3,22 @@
 /// Thanks to ContentReader type you can get an iterator to read a file to hide and get its bits
 /// in predefined bunches. Every bunch of bits are returned inside a Chunk type.
 ///
+/// Conversely, FileWriter allows you write chunks of bits into a destination file.
+///
 /// # Usage example:
 /// ```rust
-/// use steganer::fileio::{FileContent, ContentReader};
+/// use steganer::fileio::{FileContent, ContentReader, FileWriter};
 ///
 /// let file_content = FileContent::new("source_file.txt");
 /// let reader = ContentReader::new(&file_content, 4);
-/// for chunk in reader {
-///     // Do things with every chunk of 4 bits of data from source_file.txt.
-/// }
+/// {
+///     let writer = FileWriter::new("output_file");
+///     for chunk in reader {
+///         // Do things with every chunk of 4 bits of data from source_file.txt.
+///         writer.write(chunk);
+///     }
+/// } // When FileWriter types get out of scope they write to file pending last few bytes.
+/// // At this point contents of source_file.txt and output_file.txt should be the same.
 /// ```
 use std::cmp::Eq;
 use std::fmt;
@@ -142,8 +149,8 @@ impl Debug for BinaryAccumulation {
 
 /// Wrapper around file contents.
 ///
-/// Once this type is created with its new() method, file is automatically read and its contents
-/// is placed at "content" attribute.
+/// Once this type is created with its *new()* method file is automatically read and its contents
+/// is placed at *self.content* attribute.
 pub struct FileContent {
     /// File to be read.
     source: File,
@@ -192,8 +199,8 @@ impl<'a> ContentReader<'a> {
 
 /// Iterator to read file content a chunk at a time.
 ///
-/// Iterator will try to read self.chunk_size bits at a time. So returned chunk's length attribute
-/// is going to be equal to self.chunk_size unless we are really near to the file end. In that
+/// Iterator will try to read *self.chunk_size* bits at a time. So returned chunk's length attribute
+/// is going to be equal to *self.chunk_size* unless we are really near to the file end. In that
 /// last case less than self.chunk_size will be actually read so chunk's length attribute will
 /// have the actual number of bits that were actually read.
 impl<'a> Iterator for ContentReader<'a> {
@@ -228,7 +235,7 @@ impl<'a> Iterator for ContentReader<'a> {
 /// Wrapper over an open file to write into it chunks extracted from host files.
 ///
 /// Complete bytes are written at once but border bytes need to be rebuild from two different
-/// chunks, so we need "pending_byte" to use as a temporal container until it is filled
+/// chunks, so we need *self.pending_data* to use as a temporal container until it is filled
 /// completely and we can write it.
 pub struct FileWriter {
     /// Destination file to write chunks into.
@@ -246,7 +253,7 @@ impl FileWriter {
         Ok(FileWriter{destination, pending_data: initial_remainder})
     }
 
-    /// Write Chunk into self.destination file.
+    /// Write Chunk into *self.destination* file.
     ///
     /// Actually only complete bytes will be written into file. Incomplete remainder bytes
     /// will be stored into self.pending_bytes until they fill up. When pending_bytes fills
@@ -329,7 +336,7 @@ impl FileWriter {
         }
     }
 
-    /// Called by store_remainder() to get a left justified u32 with current remainder with
+    /// Called by *store_remainder()* to get a left justified u32 with current remainder with
     /// chunk data appended.
     ///
     /// # Parameters:
@@ -354,17 +361,17 @@ impl FileWriter {
         (data_appended_to_remainder, total_length)
     }
 
-    /// Keep in self.pending_data those bits that are not enough to conform a complete byte.
+    /// Keep in *self.pending_data* those bits that are not enough to conform a complete byte.
     ///
-    /// Bits are accumulated until they fill a byte. If adding bits to self.pending data fills
+    /// Bits are accumulated until they fill a byte. If adding bits to *self.pending_data* fills
     /// entire bytes, then those bytes are returned in a vector and excess bits become the
-    /// new self.pending_data.
+    /// new *self.pending_data*.
     ///
     /// # Parameters:
     /// * chunk: Chunk to be written.
     ///
     /// # Returns:
-    /// * Optionally returns a vector with complete bytes if adding remainder to self.pending_data fills
+    /// * Optionally returns a vector with complete bytes if adding remainder to *self.pending_data* fills
     /// any. If that does not happen a None is returned instead.
     fn store_remainder(&mut self, chunk: &Chunk)-> Option<Vec<u8>> {
         let (data_appended_to_remainder, total_length) = self.append_to_remainder(chunk);
@@ -456,7 +463,7 @@ mod tests {
     ///
     /// # Parameters:
     /// * data: Data chunk stored in an u32.
-    /// * size: Actual sze in bits of data chunk.
+    /// * size: Actual size in bits of data chunk.
     /// * odd: True if this datachunk was read at an odd position.
     ///
     /// # Returns:
