@@ -1,6 +1,11 @@
 use std::fs::{remove_file, copy};
+use std::fs::File;
 use std::io;
+use std::io::{BufReader, Read, Error};
 use std::path::Path;
+
+
+use ring::digest::{Context, Digest, SHA256};
 
 use tempfile::{tempdir, TempDir};
 
@@ -92,4 +97,25 @@ pub fn copy_files(files: Vec<String>, destination_folder_path: &str)-> Result<()
         }
     }
     Ok(())
+}
+
+/// Hash file content with SHA-256.
+///
+/// This way we can check to files have same content.
+///
+/// Original code got from [Rust Cookbok](https://rust-lang-nursery.github.io/rust-cookbook/cryptography/hashing.html)
+pub fn hash_file(file_path: &str) -> Result<Digest, Error> {
+    let mut reader = BufReader::new(File::open(file_path)?);
+    let mut context = Context::new(&SHA256);
+    let mut buffer = [0; 1024];
+
+    loop {
+        let count = reader.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        context.update(&buffer[..count]);
+    }
+
+    Ok(context.finish())
 }

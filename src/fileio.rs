@@ -410,11 +410,10 @@ impl Drop for FileWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::test_common::TestEnvironment;
+    use super::super::test_common::{TestEnvironment, hash_file};
     use std::path::Path;
     use std::io::{Cursor, Read};
     use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
-    use ring::digest::{Context, Digest, SHA256};
 
     const MESSAGE: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, \
     sed eiusmod tempor incidunt ut labore et dolore magna aliqua.";
@@ -476,27 +475,6 @@ mod tests {
             data >> shift - remainder
         }
 
-    }
-
-    /// Hash file content with SHA-256.
-    ///
-    /// This way we can check to files have same content.
-    ///
-    /// Original code got from [Rust Cookbok](https://rust-lang-nursery.github.io/rust-cookbook/cryptography/hashing.html)
-    fn hash(file_path: &str) -> Result<Digest, Error> {
-        let mut reader = BufReader::new(File::open(file_path)?);
-        let mut context = Context::new(&SHA256);
-        let mut buffer = [0; 1024];
-
-        loop {
-            let count = reader.read(&mut buffer)?;
-            if count == 0 {
-                break;
-            }
-            context.update(&buffer[..count]);
-        }
-
-        Ok(context.finish())
     }
 
     #[test]
@@ -600,10 +578,10 @@ mod tests {
             }
         }
         // Test destination file has same content than source file.
-        let source_file_hash = hash(source_path.to_str()
+        let source_file_hash = hash_file(source_path.to_str()
             .expect("Source file name contains odd characters"))
             .expect("Something wrong happened when calculating hash for source file.");
-        let destination_file_hash = hash(destination_file_name_path.as_str())
+        let destination_file_hash = hash_file(destination_file_name_path.as_str())
             .expect("Something wrong happened when calculating hash for destination file.");
         assert_eq!(source_file_hash.as_ref(), destination_file_hash.as_ref(),
                    "Destination file content is not the same as source file content. \
