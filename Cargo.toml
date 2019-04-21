@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["dante-signal31 <dante.signal31@gmail.com>"]
 edition = "2018"
 
+[lib]
+name = "steganer"
+path = "src/lib.rs"
+
 [[bin]]
 name = "steganer"
 path = "src/bin/main.rs"
