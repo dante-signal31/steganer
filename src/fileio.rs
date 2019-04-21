@@ -585,7 +585,7 @@ mod tests {
             .expect("Something wrong happened when calculating hash for destination file.");
         assert_eq!(source_file_hash.as_ref(), destination_file_hash.as_ref(),
                    "Destination file content is not the same as source file content. \
-                   Source has is {:X?} and destination is {:X?}",
+                   Source hash is {:X?} and destination is {:X?}",
                    source_file_hash.as_ref(), destination_file_hash.as_ref());
     }
 
