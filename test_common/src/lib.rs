@@ -4,7 +4,6 @@ use std::io;
 use std::io::{BufReader, Read, Error};
 use std::path::Path;
 
-
 use ring::digest::{Context, Digest, SHA256};
 
 use tempfile::{tempdir, TempDir};

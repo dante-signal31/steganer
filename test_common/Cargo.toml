@@ -1,0 +1,11 @@
+[package]
+name = "test_common"
+version = "0.1.0"
+authors = ["dante-signal31 <dante.signal31@gmail.com>"]
+edition = "2018"
+description = "Just an utility library to share funtionality between my unit tests and integration tests."
+# See: https://stackoverflow.com/questions/44539729/what-is-an-idiomatic-way-to-have-shared-utility-functions-for-integration-tests
+
+[dependencies]
+ring = "0.14.6"
+tempfile = "3"
