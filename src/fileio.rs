@@ -209,10 +209,10 @@ impl<'a> Iterator for ContentReader<'a> {
                 if let BitReaderError::NotEnoughData {position, length, requested: _ } = e {
                     let available_bits = length - position;
                     if available_bits > 0 {
-                        let bits = self.bit_reader.read_u32(length as u8)
+                        let bits = self.bit_reader.read_u32(available_bits as u8)
                             .expect("Error reading last few bits from file to be hidden.");
                         self.position += 1;
-                        Some(Chunk::new(bits, length as u8, self.position))
+                        Some(Chunk::new(bits, available_bits as u8, self.position))
                     } else {
                         None
                     }
@@ -235,14 +235,14 @@ pub struct FileWriter {
     destination: File,
     /// Buffer to write into extracted bits until we have a complete byte to write into
     /// destination.
-    pending_data: Remainder,
+    pending_data: Option<Remainder>,
 }
 
 impl FileWriter {
     #[must_use]
     pub fn new(destination_file: &str)-> Result<Self, Error> {
         let destination = File::create(destination_file)?;
-        let initial_remainder = Remainder::new(0, 0);
+        let initial_remainder = None;
         Ok(FileWriter{destination, pending_data: initial_remainder})
     }
 
@@ -316,9 +316,10 @@ impl FileWriter {
     /// * Vector with bytes extracted from data.
     fn get_bytes(data: u32, length: u8)-> Option<Vec<u8>>{
         let complete_bytes = length / 8;
+        let bytes_to_return = if length % 8 > 0 {complete_bytes + 1} else {complete_bytes};
         let mut returned_complete_bytes: Vec<u8> = Vec::new();
-        if complete_bytes > 0 {
-            for i in 0..=complete_bytes{
+        if bytes_to_return > 0 {
+            for i in 0..bytes_to_return{
                 let extracted_byte = get_bits(data, i*8, 8) as u8;
                 returned_complete_bytes.extend_from_slice(&[extracted_byte]);
             }
@@ -340,9 +341,16 @@ impl FileWriter {
     fn append_to_remainder(&self, chunk: &Chunk)-> (u32, u8){
         let left_justified_data = Self::left_justify(chunk.data, chunk.length);
         let data_int = bytes_to_u24(&left_justified_data);
-        let pending_data_left_justified = (self.pending_data.data as u32) << (32 - 8);
-        let data_appended_to_remainder: u32 = pending_data_left_justified + (data_int << (8 - self.pending_data.length));
-        let total_length = self.pending_data.length + chunk.length;
+        let (pending_data, pending_data_length) = match &self.pending_data {
+            Some(remainder)=> (remainder.data, remainder.length),
+            None=> {
+                let default_remainder = Remainder::new(0, 0);
+                (default_remainder.data, default_remainder.length)
+            }
+        };
+        let pending_data_left_justified = (pending_data as u32) << (32 - 8);
+        let data_appended_to_remainder: u32 = pending_data_left_justified + (data_int << (8 - pending_data_length));
+        let total_length = pending_data_length + chunk.length;
         (data_appended_to_remainder, total_length)
     }
 
@@ -362,7 +370,7 @@ impl FileWriter {
         let (data_appended_to_remainder, total_length) = self.append_to_remainder(chunk);
         if let Some(new_remainder) = Self::get_remainder(data_appended_to_remainder, total_length){
             let non_remainder_length = total_length - new_remainder.length;
-            self.pending_data = new_remainder;
+            self.pending_data = Some(new_remainder);
             if non_remainder_length == 0 {
                 // Only remainder. No entire bytes.
                 None
@@ -375,7 +383,7 @@ impl FileWriter {
             }
         } else {
             // Only entire bytes. No remainder left.
-            self.pending_data = Remainder::new(0,0);
+            self.pending_data = None;
             Some(Self::get_bytes(data_appended_to_remainder, total_length)
                 .expect("Could not extract any byte from provided data"))
         }
@@ -386,7 +394,9 @@ impl Drop for FileWriter {
     /// On drop, self.pending_data content is considered complete and should be stored
     /// into self.destination.
     fn drop(&mut self) {
-        self.destination.write(&[self.pending_data.data]);
+        if let Some(remainder) = &self.pending_data {
+            self.destination.write(&[remainder.data]);
+        }
     }
 }
 
@@ -590,7 +600,9 @@ mod tests {
         let destination_file_hash = hash(destination_file_name_path.as_str())
             .expect("Something wrong happened when calculating hash for destination file.");
         assert_eq!(source_file_hash.as_ref(), destination_file_hash.as_ref(),
-        "Destination file content is not the same as source file content.");
+                   "Destination file content is not the same as source file content. \
+                   Source has is {:X?} and destination is {:X?}",
+                   source_file_hash.as_ref(), destination_file_hash.as_ref());
     }
 
     #[test]
@@ -706,51 +718,57 @@ mod tests {
             let remainder1 = Remainder::new(0b_101_0_0000_u8, 3);
             let remainder2 = Chunk::new(0b_11, 2, 1);
             let expected_result = 0b_1011_1_000_u8;
-            destination_writer.pending_data = remainder1;
+            destination_writer.pending_data = Some(remainder1);
             if let Some(complete_byte) = destination_writer.store_remainder(&remainder2) {
                 assert!(false, "A complete byte was returned when no remainder fill was expected.");
             } else {
-                let result = destination_writer.pending_data.data;
-                assert_eq!(expected_result, result,
-                           "Store remainder without overflow did not worked as we expected. \
+                if let Some(remainder) = &destination_writer.pending_data {
+                    assert_eq!(expected_result, remainder.data,
+                               "Store remainder without overflow did not worked as we expected. \
                             We expected a remainder of {:#b} but we got {:#b}",
-                           expected_result, result);
+                               expected_result, remainder.data);
+                } else {
+                    assert!(false, "We expected a remainder but none was found.");
+                }
             }
             // Accumulating with overflow.
             let remainder1 = Remainder::new(0b_1010_111_0_u8, 7);
             let remainder2 = Chunk::new(0b_011, 3, 1);
             let expected_result = 0b_11_00_0000_u8;
             let expected_complete_byte = 0b_1010_1110_u8;
-            destination_writer.pending_data = remainder1;
+            destination_writer.pending_data = Some(remainder1);
             if let Some(complete_byte) = destination_writer.store_remainder(&remainder2){
-                let result = destination_writer.pending_data.data;
-                assert_eq!(expected_result, result,
-                           "Store remainder with overflow did not worked as we expected. \
-                            We expected a remainder of {:#b} but we got {:#b}",
-                           expected_result, result);
-                assert_eq!(expected_complete_byte, complete_byte[0],
-                           "Recovered complete byte was not what we were expecting. \
-                           We expected {:#b} but we got {:#b}",
-                           expected_complete_byte, complete_byte[0]);
+                if let Some(remainder) = &destination_writer.pending_data {
+                    assert_eq!(expected_result, remainder.data,
+                               "Store remainder with overflow did not worked as we expected. \
+                                We expected a remainder of {:#b} but we got {:#b}",
+                               expected_result, remainder.data);
+                    assert_eq!(expected_complete_byte, complete_byte[0],
+                               "Recovered complete byte was not what we were expecting. \
+                               We expected {:#b} but we got {:#b}",
+                               expected_complete_byte, complete_byte[0]);
+                } else {
+                    assert!(false, "We expected a remainder but none was found.");
+                }
             } else {
                 assert!(false, "We were expecting to fill remainder but no complete byte was returned.");
             }
             // Accumulating an exact byte.
             let remainder1 = Remainder::new(0b_1010_111_0_u8, 7);
             let remainder2 = Chunk::new(0b_0, 1, 1);
-            let expected_result = 0b_0_u8;
             let expected_complete_byte = 0b_1010_1110_u8;
-            destination_writer.pending_data = remainder1;
+            destination_writer.pending_data = Some(remainder1);
             if let Some(complete_byte) = destination_writer.store_remainder(&remainder2){
-                let result = destination_writer.pending_data.data;
-                assert_eq!(expected_result, result,
-                           "Store remainder to accumulate an exact did not worked as we expected. \
-                            We expected a remainder of {:#b} but we got {:#b}",
-                           expected_result, result);
-                assert_eq!(expected_complete_byte, complete_byte[0],
-                           "Recovered complete byte was not what we were expecting. \
-                           We expected {:#b} but we got {:#b}",
-                           expected_complete_byte, complete_byte[0]);
+                if let Some(remainder) = &destination_writer.pending_data {
+                    assert!(false, "We expected no remainder but one found instead. Found remainder \
+                        has data {:#b} a length {}",
+                        remainder.data, remainder.length);
+                } else {
+                    assert_eq!(expected_complete_byte, complete_byte[0],
+                               "Recovered complete byte was not what we were expecting. \
+                               We expected {:#b} but we got {:#b}",
+                               expected_complete_byte, complete_byte[0]);
+                }
             } else {
                 assert!(false, "We were expecting to fill remainder but no complete byte was returned.");
             }
@@ -822,7 +840,7 @@ mod tests {
                 .expect("Error happened trying to created FileWriter type.");
             let current_remainder_length = 7_u8;
             let current_remainder = 0b_1010_1110_u8;
-            destination_writer.pending_data = Remainder::new(current_remainder, current_remainder_length);
+            destination_writer.pending_data = Some(Remainder::new(current_remainder, current_remainder_length));
             let chunk = Chunk::new(0b_011, 3, 1);
             let expected_appended_remainder_length = 10_u8;
             let expected_appended_remainder = 0b_1010_1110_11_u32 << 32 - expected_appended_remainder_length;
