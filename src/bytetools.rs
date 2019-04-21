@@ -56,7 +56,7 @@ pub fn u24_to_bytes(int: u32)-> [u8; 3]{
 /// assert_eq!(mask_normal, 0b_0000_0111 as u32);
 ///
 /// let mask_inverted = mask(3, true);
-/// assert_eq!(mask_inverted, 0b_1111_1000 as u32);
+/// assert_eq!(mask_inverted, 0b_1111_1111_1111_1111_1111_1111_1111_1000 as u32);
 /// ```
 pub fn mask(length: u8, inverted: bool)-> u32 {
     let normal_mask: u32 = 2u32.pow(length as u32) - 1;

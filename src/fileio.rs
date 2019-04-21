@@ -9,10 +9,13 @@
 /// ```rust
 /// use steganer::fileio::{FileContent, ContentReader, FileWriter};
 ///
-/// let file_content = FileContent::new("source_file.txt");
-/// let reader = ContentReader::new(&file_content, 4);
+/// let file_content = FileContent::new("source_file.txt")
+///                         .expect("Error obtaining source file content");
+/// let mut reader = ContentReader::new(&file_content, 4)
+///                     .expect("There was a problem reading source file.");;
 /// {
-///     let writer = FileWriter::new("output_file");
+///     let mut writer = FileWriter::new("output_file")
+///                     .expect("Error creating output file for extracted data.");
 ///     for chunk in reader {
 ///         // Do things with every chunk of 4 bits of data from source_file.txt.
 ///         writer.write(chunk);
@@ -279,11 +282,13 @@ impl FileWriter {
     ///
     /// # Example:
     /// ```rust
+    /// use steganer::fileio::FileWriter;
+    ///
     /// let data = 0b_11_u32;
-    /// let returned_data = left_justify(data, 2);
+    /// let returned_data = FileWriter::left_justify(data, 2);
     /// assert_eq!(0b_1100_0000_u8, returned_data[0]);
     /// ```
-    fn left_justify(data: u32, data_length: u8)-> [u8; 3]{
+    pub fn left_justify(data: u32, data_length: u8)-> [u8; 3]{
         let left_shift = 24 - data_length; // Remember 8 leftmost bits are discarded.
         let justified_data = data << left_shift;
         u24_to_bytes(justified_data)
@@ -319,7 +324,7 @@ impl FileWriter {
     ///
     /// # Returns:
     /// * Vector with bytes extracted from data.
-    fn get_bytes(data: u32, length: u8)-> Option<Vec<u8>>{
+    pub fn get_bytes(data: u32, length: u8)-> Option<Vec<u8>>{
         let complete_bytes = length / 8;
         let bytes_to_return = if length % 8 > 0 {complete_bytes + 1} else {complete_bytes};
         let mut returned_complete_bytes: Vec<u8> = Vec::new();

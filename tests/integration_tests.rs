@@ -7,10 +7,10 @@ use steganer::create_configuration;
 use test_common::{copy_files, hash_file, TestEnvironment};
 
 
-const HIDDEN_FILE: String = "resources/loren.txt".to_owned();
-const HOST_FILE: String = "resources/lena.png".to_owned();
-const HOST_FILE_LOADED: String = "lena_steg.png".to_owned();
-const FILE_RECOVERED: String = "lena_recovered.txt".to_owned();
+const HIDDEN_FILE: &str = "resources/loren.txt";
+const HOST_FILE: &str = "resources/lena.png";
+const HOST_FILE_LOADED: &str = "lena_steg.png";
+const FILE_RECOVERED: &str = "lena_recovered.txt";
 
 #[test]
 fn test_simple_hiding() {
@@ -30,8 +30,8 @@ fn test_simple_hiding() {
 
     // Start test.
     // Check hiding does not raise any error.
-    let hiding_config = create_configuration(HIDDEN_FILE.as_str(),
-                                                  HOST_FILE.as_str(),
+    let hiding_config = create_configuration(HIDDEN_FILE,
+                                                  HOST_FILE,
                                                   false);
     assert_eq!(Some(()), run(&hiding_config));
     // Check extraction does not raise any error.
