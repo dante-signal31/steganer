@@ -267,9 +267,10 @@ mod tests {
     use std::path::PathBuf;
     use bitreader::BitReader;
     use image::{ImageBuffer, GenericImageView, ImageDecoder};
-    use crate::test_common::TestEnvironment;
-    use crate::bytetools::get_bits;
     use std::mem::size_of_val;
+
+    use crate::bytetools::get_bits;
+    use test_common::TestEnvironment;
 
     enum TestColors {
         BLACK,
