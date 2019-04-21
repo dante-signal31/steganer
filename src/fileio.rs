@@ -20,22 +20,19 @@
 /// } // When FileWriter types get out of scope they write to file pending last few bytes.
 /// // At this point contents of source_file.txt and output_file.txt should be the same.
 /// ```
-use std::cmp::Eq;
 use std::fmt;
-use std::fmt::{Display, Debug, Formatter};
+use std::fmt::{Debug, Formatter};
 use std::fs::File;
 // Write import gets a compiler warning. It warns about importing Write is useless but actually
 // if I remove Write import I get a compiler error in this module code.
 use std::io::{BufReader, Read, Write, Error};
 use std::iter::Iterator;
-use std::mem::size_of_val;
 use std::ops::Add;
 // Write import gets a compiler warning. It warns about importing PathBuf is useless but actually
 // if I remove PathBuf import I get a compiler error in this module code.
 use std::path::PathBuf;
 
 use bitreader::{BitReader, BitReaderError};
-use image::open;
 
 use crate::bytetools::{u24_to_bytes, mask, bytes_to_u24, get_bits};
 
@@ -261,7 +258,8 @@ impl FileWriter {
     pub fn write(&mut self, chunk: Chunk)-> std::io::Result<()>{
         if let Some(complete_bytes) = self.store_remainder(&chunk){
             for byte in complete_bytes.iter(){
-                self.destination.write(&[*byte]);
+                let _ = self.destination.write(&[*byte])
+                    .expect("An IO error happened when trying to write chunk to output file.");
             }
         }
         Ok(())
@@ -402,7 +400,8 @@ impl Drop for FileWriter {
     /// into self.destination.
     fn drop(&mut self) {
         if let Some(remainder) = &self.pending_data {
-            self.destination.write(&[remainder.data]);
+            let _ = self.destination.write(&[remainder.data])
+                .expect("An IO error happened when trying to write chunk to output file.");;
         }
     }
 }
