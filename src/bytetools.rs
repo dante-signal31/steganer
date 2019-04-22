@@ -49,7 +49,7 @@ pub fn u24_to_bytes(int: u32)-> [u8; 3]{
 /// * A mask coded in an u32.
 ///
 /// # Example:
-/// ```rust
+/// ```
 /// use steganer::bytetools::mask;
 ///
 /// let mask_normal = mask(3, false);
@@ -77,21 +77,49 @@ pub fn mask(length: u8, inverted: bool)-> u32 {
 /// * Requested bits into a u128 type.
 ///
 /// # Example:
-/// ```rust
+/// ```
 /// use steganer::bytetools::get_bits;
 ///
-/// let bits_u32 = get_bits(0b_0001_1000_u32, 27, 2) as u32; // As u32, 3 zeroed bytes are prepended before 0b_0001_1000.
-/// assert_eq!(bits_u32, 0b_11_u32);
+/// let INT: u32 = 0b_0000_0000_0110_1001_0101_1100_1110_0011_u32;
+/// let bits_u32 = get_bits(INT, 24,2) as u32;
+/// assert_eq!(bits_u32, 0b_11u32);
 /// ```
 pub fn get_bits<T>(source: T, position: u8, length: u8)-> u128
     where
         T: Integer + Into<u128> + BitAnd<Output=T> + Debug {
+    // TODO: Refactor this. I think it's better return bits in the same type as source.
     let left_offset = (size_of::<u128>() - size_of::<T>()) * 8;
     let normalized_source: u128 = source.into();
     let right_drift = (size_of::<u128>() * 8) - (left_offset + position as usize + length as usize);
     let bit_mask = u128::from(mask(length, false)) << right_drift;
     let extracted_bits = (normalized_source & bit_mask) >> right_drift;
     extracted_bits
+}
+
+/// Justify at top left given data.
+///
+/// Leftmost 8 bits are discarded, because although an u32 is entered an u24 is returned
+/// distributed in 3 bytes.
+///
+/// # Parameters:
+/// * data: u32 containing data.
+/// * data_length: How many bits are actually useful data.
+///
+/// # Returns:
+/// * An array of three bytes. Returned u24 leftmost bits are returned in first byte.
+///
+/// # Example:
+/// ```
+/// use steganer::bytetools::left_justify;
+///
+/// let data = 0b_11_u32;
+/// let returned_data = left_justify(data, 2);
+/// assert_eq!(0b_1100_0000_u8, returned_data[0]);
+/// ```
+pub fn left_justify(data: u32, data_length: u8)-> [u8; 3]{
+    let left_shift = 24 - data_length; // Remember 8 leftmost bits are discarded.
+    let justified_data = data << left_shift;
+    u24_to_bytes(justified_data)
 }
 
 #[cfg(test)]
@@ -147,5 +175,10 @@ mod tests {
                    0b_11_u8, bits_u8);
     }
 
-
+    #[test]
+    fn test_left_justify() {
+        let data = 0b_11_u32;
+        let returned_data = left_justify(data, 2);
+        assert_eq!(0b_1100_0000_u8, returned_data[0]);
+    }
 }

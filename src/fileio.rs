@@ -6,7 +6,7 @@
 /// Conversely, FileWriter allows you write chunks of bits into a destination file.
 ///
 /// # Usage example:
-/// ```rust
+/// ```no_run
 /// use steganer::fileio::{FileContent, ContentReader, FileWriter};
 ///
 /// let file_content = FileContent::new("source_file.txt")
@@ -37,7 +37,7 @@ use std::path::PathBuf;
 
 use bitreader::{BitReader, BitReaderError};
 
-use crate::bytetools::{u24_to_bytes, mask, bytes_to_u24, get_bits};
+use crate::bytetools::{u24_to_bytes, mask, bytes_to_u24, get_bits, left_justify};
 
 
 /// Bits read from files to be hidden are stored at Chunks.
@@ -268,32 +268,6 @@ impl FileWriter {
         Ok(())
     }
 
-    /// Justify at top left given data.
-    ///
-    /// Leftmost 8 bits are discarded, because although an u32 is entered an u24 is returned
-    /// distributed in 3 bytes.
-    ///
-    /// # Parameters:
-    /// * data: u32 containing data.
-    /// * data_length: How many bits are actually useful data.
-    ///
-    /// # Returns:
-    /// * An array of three bytes. Returned u24 leftmost bits are returned in first byte.
-    ///
-    /// # Example:
-    /// ```rust
-    /// use steganer::fileio::FileWriter;
-    ///
-    /// let data = 0b_11_u32;
-    /// let returned_data = FileWriter::left_justify(data, 2);
-    /// assert_eq!(0b_1100_0000_u8, returned_data[0]);
-    /// ```
-    pub fn left_justify(data: u32, data_length: u8)-> [u8; 3]{
-        let left_shift = 24 - data_length; // Remember 8 leftmost bits are discarded.
-        let justified_data = data << left_shift;
-        u24_to_bytes(justified_data)
-    }
-
     /// Get bits that do not conform complete bytes.
     ///
     /// # Parameters:
@@ -349,7 +323,7 @@ impl FileWriter {
     /// * u32 with left justified current remainder with chunk data appended.
     /// * u8 how many bits from left are actual data.
     fn append_to_remainder(&self, chunk: &Chunk)-> (u32, u8){
-        let left_justified_data = Self::left_justify(chunk.data, chunk.length);
+        let left_justified_data = left_justify(chunk.data, chunk.length);
         let data_int = bytes_to_u24(&left_justified_data);
         let (pending_data, pending_data_length) = match &self.pending_data {
             Some(remainder)=> (remainder.data, remainder.length),
@@ -619,13 +593,6 @@ mod tests {
     #[test]
     fn test_writing_3_bits_chunks() {
         test_writing_n_bits_chunks(3);
-    }
-
-    #[test]
-    fn test_left_justify() {
-        let data = 0b_11_u32;
-        let returned_data = FileWriter::left_justify(data, 2);
-        assert_eq!(0b_1100_0000_u8, returned_data[0]);
     }
 
     #[test]
