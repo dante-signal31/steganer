@@ -37,7 +37,7 @@ use std::path::PathBuf;
 
 use bitreader::{BitReader, BitReaderError};
 
-use crate::bytetools::{u24_to_bytes, mask, bytes_to_u24, get_bits, left_justify};
+use crate::bytetools::{u24_to_bytes, mask, bytes_to_u24, get_bits, left_justify, get_bytes};
 
 
 /// Bits read from files to be hidden are stored at Chunks.
@@ -290,29 +290,6 @@ impl FileWriter {
         }
     }
 
-    /// Take data bits and return a vector with its bytes.
-    ///
-    /// # Parameters:
-    /// * data: Left justified u32 with data bits.
-    /// * length: How many bits from left are actual data.
-    ///
-    /// # Returns:
-    /// * Vector with bytes extracted from data.
-    pub fn get_bytes(data: u32, length: u8)-> Option<Vec<u8>>{
-        let complete_bytes = length / 8;
-        let bytes_to_return = if length % 8 > 0 {complete_bytes + 1} else {complete_bytes};
-        let mut returned_complete_bytes: Vec<u8> = Vec::new();
-        if bytes_to_return > 0 {
-            for i in 0..bytes_to_return{
-                let extracted_byte = get_bits(data, i*8, 8) as u8;
-                returned_complete_bytes.extend_from_slice(&[extracted_byte]);
-            }
-            Some(returned_complete_bytes)
-        } else {
-            None
-        }
-    }
-
     /// Called by *store_remainder()* to get a left justified u32 with current remainder with
     /// chunk data appended.
     ///
@@ -362,13 +339,13 @@ impl FileWriter {
                 // Remainder and entire bytes.
                 // I don't use get_bits() because I want to keep non_remainder_data left justified.
                 let non_remainder_data = data_appended_to_remainder & mask(32-non_remainder_length, true);
-                Some(Self::get_bytes(non_remainder_data, non_remainder_length)
+                Some(get_bytes(non_remainder_data, non_remainder_length)
                     .expect("Could not extract any byte from provided data"))
             }
         } else {
             // Only entire bytes. No remainder left.
             self.pending_data = None;
-            Some(Self::get_bytes(data_appended_to_remainder, total_length)
+            Some(get_bytes(data_appended_to_remainder, total_length)
                 .expect("Could not extract any byte from provided data"))
         }
     }
@@ -730,58 +707,6 @@ mod tests {
             } else {
                 assert!(false, "We were expecting to fill remainder but no complete byte was returned.");
             }
-        }
-    }
-
-    #[test]
-    fn test_get_bytes() {
-        // Not enough bits to fill a byte.
-        let data_incomplete_byte_length = 5_u8;
-        let data_incomplete_byte = (0b_1_0101 as u32) << (32 - data_incomplete_byte_length);
-        if let None = FileWriter::get_bytes(data_incomplete_byte, data_incomplete_byte_length) {
-            assert!(true);
-        }
-        // Enough bits to fill a byte and partially a second.
-        let data_up_to_second_byte_length = 13_u8;
-        let data_up_to_second_byte = (0b_1_0101 as u32) << (32 - data_up_to_second_byte_length);
-        if let Some(bytes) = FileWriter::get_bytes(data_up_to_second_byte, data_up_to_second_byte_length) {
-            assert_eq!(0_u8, bytes[0],
-                       "Recovered first byte was not what we were expecting. Expected {} but got {}.",
-                       0_u8, bytes[0]);
-            assert_eq!(0b_1010_1000_u8, bytes[1],
-                       "Recovered second byte was not what we were expecting. Expected {} but got {}.",
-                       0b_1010_1000_u8, bytes[1]);
-        }
-        // Enough bits to fill two bytes and partially a third.
-        let data_up_to_third_byte_length = 21_u8;
-        let data_up_to_third_byte = (0b_1_0101 as u32) << (32 - data_up_to_third_byte_length);
-        if let Some(bytes) = FileWriter::get_bytes(data_up_to_third_byte, data_up_to_third_byte_length) {
-            assert_eq!(0_u8, bytes[0],
-                       "Recovered first byte was not what we were expecting. Expected {} but got {}.",
-                       0_u8, bytes[0]);
-            assert_eq!(0_u8, bytes[1],
-                       "Recovered second byte was not what we were expecting. Expected {} but got {}.",
-                       0_u8, bytes[1]);
-            assert_eq!(0b_1010_1000_u8, bytes[2],
-                       "Recovered third byte was not what we were expecting. Expected {} but got {}.",
-                       0b_1010_1000_u8, bytes[2]);
-        }
-        // Enough bits to fill three bytes and partially a fourth.
-        let data_up_to_fourth_byte_length = 29_u8;
-        let data_up_to_fourth_byte = (0b_1_0101 as u32) << (32 - data_up_to_fourth_byte_length);
-        if let Some(bytes) = FileWriter::get_bytes(data_up_to_fourth_byte, data_up_to_fourth_byte_length) {
-            assert_eq!(0_u8, bytes[0],
-                       "Recovered first byte was not what we were expecting. Expected {} but got {}.",
-                       0_u8, bytes[0]);
-            assert_eq!(0_u8, bytes[1],
-                       "Recovered second byte was not what we were expecting. Expected {} but got {}.",
-                       0_u8, bytes[1]);
-            assert_eq!(0_u8, bytes[2],
-                       "Recovered third byte was not what we were expecting. Expected {} but got {}.",
-                       0_u8, bytes[2]);
-            assert_eq!(0b_1010_1000_u8, bytes[3],
-                       "Recovered fourth byte was not what we were expecting. Expected {} but got {}.",
-                       0b_1010_1000_u8, bytes[3]);
         }
     }
 
