@@ -18,7 +18,7 @@
 ///                     .expect("Error creating output file for extracted data.");
 ///     for chunk in reader {
 ///         // Do things with every chunk of 4 bits of data from source_file.txt.
-///         writer.write(chunk);
+///         writer.write(&chunk);
 ///     }
 /// } // When FileWriter types get out of scope they write to file pending last few bytes.
 /// // At this point contents of source_file.txt and output_file.txt should be the same.
@@ -258,8 +258,8 @@ impl FileWriter {
     /// Actually only complete bytes will be written into file. Incomplete remainder bytes
     /// will be stored into self.pending_bytes until they fill up. When pending_bytes fills
     /// it is written and replaced by new exceeding bits.
-    pub fn write(&mut self, chunk: Chunk)-> std::io::Result<()>{
-        if let Some(complete_bytes) = self.store_remainder(&chunk){
+    pub fn write(&mut self, chunk: &Chunk)-> std::io::Result<()>{
+        if let Some(complete_bytes) = self.store_remainder(chunk){
             for byte in complete_bytes.iter(){
                 let _ = self.destination.write(&[*byte])
                     .expect("An IO error happened when trying to write chunk to output file.");
@@ -409,7 +409,6 @@ mod tests {
             ((bytes[1] as u32) << 16) +
             ((bytes[2] as u32) <<  8) +
             ((bytes[3] as u32) <<  0)
-
     }
 
     /// Justify to right the first "size" bits.
@@ -532,7 +531,7 @@ mod tests {
                 .expect("Error happened trying to created FileWriter type.");
             // Transferring chunks.
             for chunk in reader {
-                destination_writer.write(chunk);
+                destination_writer.write(&chunk);
             }
         }
         // Test destination file has same content than source file.
