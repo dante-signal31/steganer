@@ -44,20 +44,21 @@ impl ReadingState {
 }
 
 /// Wrapper to deal with image that is going to contain hidden file.
-struct ContainerImage {
+pub struct ContainerImage <'a> {
     image: DynamicImage,
     width: u32,
     height: u32,
     reading_state: Option<ReadingState>,
+    file_pathname: &'a str,
 }
 
-impl ContainerImage{
+impl <'a> ContainerImage <'a>{
     #[must_use]
-    pub fn new(file_pathname: &str)-> Self {
+    pub fn new(file_pathname: &'a str)-> Self {
         let image = image::open(file_pathname)
             .expect("Something wrong happened opening given image");
         let (width, height) = image.dimensions();
-        ContainerImage{image, width, height, reading_state: None}
+        ContainerImage{image, width, height, reading_state: None, file_pathname}
     }
 
     /// Prepare ContainerImage to host a hidden file.
@@ -66,7 +67,7 @@ impl ContainerImage{
     /// it is encoded in ContainerImage header. Besides, file to hide size is used to calculate
     /// how many bits should be hidden per pixel.
     ///
-    /// This method should be called once, before encode_data() is called for the first time.
+    /// This method should be called once, before hide_data() is called for the first time.
     ///
     /// # Parameters:
     /// * total_data_size: File to hide size in bytes
@@ -236,7 +237,7 @@ impl ContainerImage{
 /// Iterator will try to fill data attribute of Chunk. If it can not fill it, because it is
 /// extracting last few bits then those bits are left justified to data attribute and length
 /// attribute is set to how many files it was able to read.
-impl Iterator for ContainerImage {
+impl <'a> Iterator for ContainerImage <'a>{
     type Item = Chunk;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -257,6 +258,17 @@ impl Iterator for ContainerImage {
             }
         } else {
             panic!("You tried to use this ContainerImage as an Iterator before calling setup_hidden_data_extraction().");
+        }
+    }
+}
+
+/// Save to file every change done over image.
+///
+/// Image crate works in memory so changes should be written before disposing ContainerImage.
+impl <'a> Drop for ContainerImage <'a> {
+    fn drop(&mut self) {
+        if let None = &self.reading_state {
+            self.image.save(self.file_pathname);
         }
     }
 }
@@ -665,5 +677,29 @@ mod tests {
         assert_eq!(hidden_data, recovered_data,
                    "ContainerImage iterator did not recover expected data. Expected {:#?} but recovered {:#?}",
                    hidden_data, recovered_data)
+    }
+
+    #[test]
+    fn test_drop() {
+        let dummy_size = 6363_u32;
+        // Build test environment.
+        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        {
+            let mut container = ContainerImage::new(test_image_path.to_str()
+                .expect("Something wrong happened converting test image path to str"));
+            let _ = container.setup_hiding(dummy_size);
+        } // Here container should be written to disk, with dummy_size encoded at its header, before dropping container.
+        // Now try to recover encoded size.
+        let mut container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        container.setup_hidden_data_extraction();
+        if let Some(state) = &container.reading_state {
+            let extracted_size = state.hidden_file_size;
+            assert_eq!(dummy_size, extracted_size,
+                       "Recovered size is not what we were expecting. Expected {} but recovered {}.",
+                       dummy_size, extracted_size);
+        } else {
+            assert!(false, "No reading state recovered");
+        }
     }
 }
