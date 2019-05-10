@@ -13,7 +13,7 @@ use crate::fileio::{FileContent, ContentReader, FileWriter};
 use crate::stegimage::ContainerImage;
 
 /// Main function in steganer. It runs its main logic.
-pub fn run(config: &Configuration)-> Result<()> {
+pub fn _run(config: &Configuration) -> Result<()> {
     if config.extract {
         extract_from_image(&config.hidden_file, &config.host_file)
     } else {
@@ -25,7 +25,7 @@ pub fn run(config: &Configuration)-> Result<()> {
 ///
 /// This function is only useful for integration tests in order to create configurations to test
 /// run function.
-pub fn create_configuration(hidden_file: &str, host_file: &str, extract: bool)-> Configuration {
+pub fn _create_configuration(hidden_file: &str, host_file: &str, extract: bool) -> Configuration {
     Configuration::new(hidden_file, host_file, extract)
 }
 

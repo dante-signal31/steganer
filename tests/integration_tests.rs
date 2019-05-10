@@ -2,8 +2,8 @@ use std::env::current_dir;
 use std::fs::read;
 use std::path::Path;
 
-use steganer::run;
-use steganer::create_configuration;
+use steganer::_run;
+use steganer::_create_configuration;
 use test_common::{copy_files, hash_file, TestEnvironment};
 
 const SOURCE_FOLDER: &str = "tests/resources/";
@@ -38,19 +38,19 @@ fn test_simple_hiding() {
         .expect("Host file name has no valid unicode characters");
     // Start test.
     // Check hiding does not raise any error.
-    let hiding_config = create_configuration(test_hidden_file.as_str(),
-                                                  test_host_file.as_str(),
-                                                  false);
-    assert_eq!((), run(&hiding_config).expect("Error happened"));
+    let hiding_config = _create_configuration(test_hidden_file.as_str(),
+                                              test_host_file.as_str(),
+                                              false);
+    assert_eq!((), _run(&hiding_config).expect("Error happened"));
     // Check extraction does not raise any error.
     let recovered_file_absolute_path = test_folder_path.join(FILE_RECOVERED).into_os_string().into_string()
         .expect("Error generating recovered file absolute path.");
     let host_file_loaded_absolute_path = test_folder_path.join(HOST_FILE).into_os_string().into_string()
         .expect("Error generating host file loaded absolute path");
-    let extraction_config = create_configuration(recovered_file_absolute_path.as_str(),
-                                                 host_file_loaded_absolute_path.as_str(),
-                                                 true);
-    assert_eq!((), run(&extraction_config).expect("Error happened"));
+    let extraction_config = _create_configuration(recovered_file_absolute_path.as_str(),
+                                                  host_file_loaded_absolute_path.as_str(),
+                                                  true);
+    assert_eq!((), _run(&extraction_config).expect("Error happened"));
 
     // Test destination file has same content than source file.
     let original_file_hash = hash_file(file_hidden_absolute_path.as_str())
