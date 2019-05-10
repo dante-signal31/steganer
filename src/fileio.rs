@@ -366,7 +366,6 @@ impl Drop for FileWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
-//    use super::super::test_common::{TestEnvironment, hash_file};
     use std::path::Path;
     use std::io::{Cursor, Read};
     use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};

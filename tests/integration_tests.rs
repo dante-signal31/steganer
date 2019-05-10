@@ -8,7 +8,6 @@ use test_common::{copy_files, hash_file, TestEnvironment};
 
 const SOURCE_FOLDER: &str = "tests/resources/";
 const HIDDEN_FILE: &str = "loren.txt";
-//const HIDDEN_FILE: &str = "character.txt";
 // By Original full portrait: "Playmate of the Month". Playboy Magazine. November 1972,
 // photographed by Dwight Hooker. This 512x512 electronic/mechanical scan of a section of the
 // full portrait: Alexander Sawchuk and two others[1] - The USC-SIPI image database,
