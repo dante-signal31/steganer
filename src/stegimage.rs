@@ -268,7 +268,8 @@ impl <'a> Iterator for ContainerImage <'a>{
 impl <'a> Drop for ContainerImage <'a> {
     fn drop(&mut self) {
         if let None = &self.reading_state {
-            self.image.save(self.file_pathname);
+            self.image.save(self.file_pathname)
+                .expect("Image could not be saved");
         }
     }
 }
@@ -278,8 +279,8 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
     use bitreader::BitReader;
-    use image::{ImageBuffer, GenericImageView, ImageDecoder};
-    use std::mem::size_of_val;
+    use image::{ImageBuffer, GenericImageView};
+//    use std::mem::size_of_val;
 
     use crate::bytetools::get_bits;
     use test_common::TestEnvironment;
@@ -316,7 +317,7 @@ mod tests {
     #[test]
     fn test_get_chunk_size() {
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
-        let mut container = ContainerImage::new(test_image_path.to_str()
+        let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
         // Temporary test image has 512x512 = 262.144 pixels.
         // But we use first HEADER_PIXEL_LENGTH bits for header, so we can use
@@ -507,7 +508,7 @@ mod tests {
         let test_bits: u32 = 0b_10110;
         let test_bits_length: u8 = 5;
         let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
-        let mut container = ContainerImage::new(test_image_path.to_str()
+        let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
         let recovered_bits = container.decode_bits( 0, 0, test_bits_length);
         assert_eq!(test_bits, recovered_bits,
@@ -525,7 +526,7 @@ mod tests {
         test_bits = test_bits + (expected_lower_byte as u32);
         let test_bits_length: u8 = 14;
         let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
-        let mut container = ContainerImage::new(test_image_path.to_str()
+        let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
         let recovered_bits = container.decode_bits( 0, 0, test_bits_length);
         let recovered_bytes = u24_to_bytes(recovered_bits);
@@ -548,7 +549,7 @@ mod tests {
             (expected_lower_byte as u32);
         let test_bits_length: u8 = 19;
         let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
-        let mut container = ContainerImage::new(test_image_path.to_str()
+        let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
         let recovered_bits = container.decode_bits( 0, 0, test_bits_length,);
         let recovered_bytes = u24_to_bytes(recovered_bits);
@@ -574,7 +575,7 @@ mod tests {
         let expected_third_row_coordinates = Position{x: (position_third_row as u32 - (test_image_width * 2) + HEADER_PIXEL_LENGTH as u32), y: 2};
         // Test environment build.
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
-        let mut container = ContainerImage::new(test_image_path.to_str()
+        let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str"));
         // Tests.
         let recovered_position_first_row = container.get_coordinates(position_first_row);

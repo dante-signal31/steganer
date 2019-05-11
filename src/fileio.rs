@@ -37,7 +37,7 @@ use std::path::PathBuf;
 
 use bitreader::{BitReader, BitReaderError};
 
-use crate::bytetools::{u24_to_bytes, mask, bytes_to_u24, get_bits, left_justify, get_bytes};
+use crate::bytetools::{mask, bytes_to_u24, get_bits, left_justify, get_bytes};
 
 
 /// Bits read from files to be hidden are stored at Chunks.
@@ -153,7 +153,7 @@ impl Debug for BinaryAccumulation {
 /// is placed at *self.content* attribute.
 pub struct FileContent {
     /// File to be read.
-    source: File,
+//    source: File,
     /// Vector of bytes with read content.
     content: Vec<u8>,
 }
@@ -167,7 +167,7 @@ impl FileContent {
         let _ = buf_reader.read_to_end(&mut content)
             .expect("Error reading file to hide content.");
         Ok(FileContent {
-            source,
+//            source,
             content,
         })
     }
@@ -258,14 +258,13 @@ impl FileWriter {
     /// Actually only complete bytes will be written into file. Incomplete remainder bytes
     /// will be stored into self.pending_bytes until they fill up. When pending_bytes fills
     /// it is written and replaced by new exceeding bits.
-    pub fn write(&mut self, chunk: &Chunk)-> std::io::Result<()>{
+    pub fn write(&mut self, chunk: &Chunk) {
         if let Some(complete_bytes) = self.store_remainder(chunk){
             for byte in complete_bytes.iter(){
                 let _ = self.destination.write(&[*byte])
                     .expect("An IO error happened when trying to write chunk to output file.");
             }
         }
-        Ok(())
     }
 
     /// Get bits that do not conform complete bytes.
@@ -436,7 +435,7 @@ mod tests {
     #[test]
     // Test iteration with chunks smaller than 8 bits.
     fn test_iterator_next_under_8() { ;
-        let ( source_path,test_env) = get_temporary_test_file();
+        let ( source_path, _test_env) = get_temporary_test_file();
         let file_content = FileContent::new(source_path.to_str()
             .expect("Source file name contains odd characters."))
             .expect("Error getting file contents");
@@ -518,7 +517,7 @@ mod tests {
         let file_content = FileContent::new(source_path.to_str()
             .expect("Source file name contains odd characters."))
             .expect("Error getting file contents");
-        let mut reader = ContentReader::new(&file_content, chunk_size)
+        let reader = ContentReader::new(&file_content, chunk_size)
             .expect("There was a problem reading source file.");
         // Destination file setup.
         let destination_file_name_path = test_env.path().join("output.txt").into_os_string().into_string()
@@ -652,7 +651,7 @@ mod tests {
             let remainder2 = Chunk::new(0b_11, 2, 1);
             let expected_result = 0b_1011_1_000_u8;
             destination_writer.pending_data = Some(remainder1);
-            if let Some(complete_byte) = destination_writer.store_remainder(&remainder2) {
+            if let Some(_) = destination_writer.store_remainder(&remainder2) {
                 assert!(false, "A complete byte was returned when no remainder fill was expected.");
             } else {
                 if let Some(remainder) = &destination_writer.pending_data {

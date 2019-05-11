@@ -4,8 +4,8 @@ pub mod configuration;
 pub mod fileio;
 pub mod stegimage;
 
-use std::error::Error;
-use std::fs::{File, metadata};
+//use std::error::Error;
+use std::fs::metadata;
 use std::io::Result;
 
 use crate::configuration::Configuration;
@@ -40,8 +40,7 @@ pub fn extract_from_image(hidden_file: &str, host_file: &str)-> Result<()> {
     let mut extracted_file = FileWriter::new(hidden_file)
         .expect("Error creating destination file for extracted data");
     for chunk in host_image {
-        extracted_file.write(&chunk)
-            .expect("Error writing extracted data to destination file");
+        extracted_file.write(&chunk);
     }
     Ok(())
 }

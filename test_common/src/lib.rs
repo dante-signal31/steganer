@@ -86,16 +86,16 @@ pub fn copy_file(source_file_path: &str, destination_file_path: &str)-> Result<u
 
 /// Copy all files in an given list to a given destination folder. Original file names
 /// are kept untouched.
-pub fn copy_files(files: Vec<&str>, destination_folder_path: &str)-> Result<(), io::Error>{
+pub fn copy_files(files: Vec<&str>, destination_folder_path: &str) {
     for file in files{
         let path = Path::new(&file);
         if let Some(filename) = path.file_name() {
             let destination_filename = Path::new(destination_folder_path).join(filename);
             copy_file(file, destination_filename.as_path().to_str()
-                .expect("Destination filen name for copy has non valid unicode characters."))?;
+                .expect("Destination file name for copy has non valid unicode characters."))
+                .expect("Batch copy failed.");
         }
     }
-    Ok(())
 }
 
 /// Hash file content with SHA-256.
