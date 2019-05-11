@@ -31,7 +31,7 @@ use std::fs::File;
 use std::io::{BufReader, Read, Write, Error};
 use std::iter::Iterator;
 use std::ops::Add;
-// Write import gets a compiler warning. It warns about importing PathBuf is useless but actually
+// Pathbuf import gets a compiler warning. It warns about importing PathBuf is useless but actually
 // if I remove PathBuf import I get a compiler error in this module code.
 use std::path::PathBuf;
 
