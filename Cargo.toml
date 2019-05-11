@@ -13,7 +13,6 @@ name = "steganer"
 path = "src/bin/main.rs"
 
 [dependencies]
-#argparse = "0.2.2"
 clap = "2.33.0"
 bitreader = "0.3.1"
 image = "0.21.0"
