@@ -103,8 +103,13 @@ impl <'a> ContainerImage <'a>{
     /// * Chunk size. Each chunk will be encoded in a pixel.
     fn get_chunk_size(&self, total_data_size: u32)-> u8{
         let usable_pixels_amount = (self.height * self.width) - HEADER_PIXEL_LENGTH as u32;
-        let bits_per_pixel = (((total_data_size * 8) as f32) / usable_pixels_amount as f32).ceil() as u8;
-        bits_per_pixel
+        let total_data_size_in_bits = total_data_size * 8;
+        if total_data_size_in_bits > usable_pixels_amount * 24 {
+            panic!("File to be hidden is too big for this host image.")
+        } else {
+            let bits_per_pixel = (((total_data_size_in_bits) as f32) / usable_pixels_amount as f32).ceil() as u8;
+            bits_per_pixel
+        }
     }
 
     /// First HEADER_PIXEL_LENGTH pixels of container image hides a u32 with encoded
@@ -327,6 +332,20 @@ mod tests {
         assert_eq!(expected_chunk_size, chunk_size,
                    "Recovered chunk size was not what we were expecting. Expected {} but got {}",
                    expected_chunk_size, chunk_size);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_get_chunk_size_file_too_big() {
+        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let container = ContainerImage::new(test_image_path.to_str()
+            .expect("Something wrong happened converting test image path to str"));
+        // Temporary test image has 512x512 = 262.144 pixels.
+        // But we use first HEADER_PIXEL_LENGTH bits for header, so we can use
+        // 262.144 - HEADER_PIXEL_LENGTH to hide data = 262.112 pixels.
+        // Every pixel can hide up to 24 bits os hidden data, so this
+        // image can hide up to 6.290.688 bits = 786.336 bytes.
+        let chunk_size = container.get_chunk_size(800000);
     }
 
     #[test]
