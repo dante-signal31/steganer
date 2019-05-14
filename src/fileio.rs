@@ -11,8 +11,7 @@
 ///
 /// let file_content = FileContent::new("source_file.txt")
 ///                         .expect("Error obtaining source file content");
-/// let mut reader = ContentReader::new(&file_content, 4)
-///                     .expect("There was a problem reading source file.");;
+/// let mut reader = ContentReader::new(&file_content, 4);
 /// {
 ///     let mut writer = FileWriter::new("output_file")
 ///                     .expect("Error creating output file for extracted data.");
@@ -37,6 +36,7 @@ use std::path::PathBuf;
 
 use bitreader::{BitReader, BitReaderError};
 
+use crate::*;
 use crate::bytetools::{mask, bytes_to_u24, get_bits, left_justify, get_bytes};
 
 
@@ -160,12 +160,13 @@ pub struct FileContent {
 
 impl FileContent {
     #[must_use]
-    pub fn new(source_file: &str)-> Result<Self, Error> {
-        let source = File::open(source_file)?;
+    pub fn new(source_file: &str)-> Result<Self> {
+        let source = File::open(source_file)
+            .chain_err(|| "Error opening file to hide")?;
         let mut buf_reader = BufReader::new(&source);
         let mut content: Vec<u8> = Vec::new();
         let _ = buf_reader.read_to_end(&mut content)
-            .expect("Error reading file to hide content.");
+            .chain_err(||"Could not read file to hide content.")?;
         Ok(FileContent {
 //            source,
             content,
@@ -187,13 +188,13 @@ pub struct ContentReader<'a> {
 
 impl<'a> ContentReader<'a> {
     #[must_use]
-    pub fn new(content: &'a FileContent, chunk_size: u8)-> Result<Self, Error> {
+    pub fn new(content: &'a FileContent, chunk_size: u8)-> Self {
         let file_bytes = content.content.as_slice();
-        Ok(ContentReader {
+        ContentReader {
             bit_reader: BitReader::new(file_bytes.clone()),
             chunk_size,
             position: 0,
-        })
+        }
     }
 }
 
@@ -217,6 +218,8 @@ impl<'a> Iterator for ContentReader<'a> {
                     let available_bits = length - position;
                     if available_bits > 0 {
                         let bits = self.bit_reader.read_u32(available_bits as u8)
+                            // I cannot use error_chain because it is not possible change next()
+                            // signature because it belongs to Iterator trait.
                             .expect("Error reading last few bits from file to be hidden.");
                         self.position += 1;
                         Some(Chunk::new(bits, available_bits as u8, self.position-1))
@@ -247,8 +250,9 @@ pub struct FileWriter {
 
 impl FileWriter {
     #[must_use]
-    pub fn new(destination_file: &str)-> Result<Self, Error> {
-        let destination = File::create(destination_file)?;
+    pub fn new(destination_file: &str)-> Result<Self> {
+        let destination = File::create(destination_file)
+            .chain_err(|| "Error creating destination file.")?;
         let initial_remainder = None;
         Ok(FileWriter{destination, pending_data: initial_remainder})
     }
@@ -258,13 +262,14 @@ impl FileWriter {
     /// Actually only complete bytes will be written into file. Incomplete remainder bytes
     /// will be stored into self.pending_bytes until they fill up. When pending_bytes fills
     /// it is written and replaced by new exceeding bits.
-    pub fn write(&mut self, chunk: &Chunk) {
-        if let Some(complete_bytes) = self.store_remainder(chunk){
+    pub fn write(&mut self, chunk: &Chunk)-> Result<()> {
+        if let Some(complete_bytes) = self.store_remainder(chunk)?{
             for byte in complete_bytes.iter(){
                 let _ = self.destination.write(&[*byte])
-                    .expect("An IO error happened when trying to write chunk to output file.");
+                    .chain_err(||"An IO error happened when trying to write chunk to destination file.")?;
             }
         }
+        Ok(())
     }
 
     /// Get bits that do not conform complete bytes.
@@ -326,26 +331,29 @@ impl FileWriter {
     /// # Returns:
     /// * Optionally returns a vector with complete bytes if adding remainder to *self.pending_data* fills
     /// any. If that does not happen a None is returned instead.
-    fn store_remainder(&mut self, chunk: &Chunk)-> Option<Vec<u8>> {
+    fn store_remainder(&mut self, chunk: &Chunk)-> Result<Option<Vec<u8>>> {
         let (data_appended_to_remainder, total_length) = self.append_to_remainder(chunk);
         if let Some(new_remainder) = Self::get_remainder(data_appended_to_remainder, total_length){
             let non_remainder_length = total_length - new_remainder.length;
             self.pending_data = Some(new_remainder);
             if non_remainder_length == 0 {
                 // Only remainder. No entire bytes.
-                None
+                Ok(None)
             } else {
                 // Remainder and entire bytes.
                 // I don't use get_bits() because I want to keep non_remainder_data left justified.
                 let non_remainder_data = data_appended_to_remainder & mask(32-non_remainder_length, true);
-                Some(get_bytes(non_remainder_data, non_remainder_length)
-                    .expect("Could not extract any byte from provided data"))
+                Ok(Some(get_bytes(non_remainder_data, non_remainder_length)
+                            // At this point we have calculated that there should be entire bytes
+                            // so if get_bytes returns None then we have an error, and we use
+                            // ok_or() to launch that error.
+                            .ok_or("Could not extract any byte from provided data")?))
             }
         } else {
             // Only entire bytes. No remainder left.
             self.pending_data = None;
-            Some(get_bytes(data_appended_to_remainder, total_length)
-                .expect("Could not extract any byte from provided data"))
+            Ok(Some(get_bytes(data_appended_to_remainder, total_length)
+                        .ok_or("Could not extract any byte from provided data")?))
         }
     }
 }
@@ -356,7 +364,9 @@ impl Drop for FileWriter {
     fn drop(&mut self) {
         if let Some(remainder) = &self.pending_data {
             let _ = self.destination.write(&[remainder.data])
-                .expect("An IO error happened when trying to write chunk to output file.");;
+                // I don't use error_chain here because a I cannot change drop trait signature
+                // to return a Result.
+                .expect("An IO error happened when trying to write chunk to output file.");
         }
     }
 }
@@ -439,8 +449,7 @@ mod tests {
         let file_content = FileContent::new(source_path.to_str()
             .expect("Source file name contains odd characters."))
             .expect("Error getting file contents");
-        let mut reader = ContentReader::new(&file_content, 4)
-            .expect("There was a problem reading source file.");
+        let mut reader = ContentReader::new(&file_content, 4);
         let mut chunk: Chunk = reader.next()
             .expect("Error reading chunk"); // Upper half of "L".
         let mut expected_chunk = "L".to_owned().as_bytes()[0] as u32;
@@ -464,8 +473,7 @@ mod tests {
         let file_content = FileContent::new(source_path.to_str()
             .expect("Source file name contains odd characters."))
             .expect("Error getting file contents");
-        let mut reader = ContentReader::new(&file_content, 12)
-            .expect("There was a problem reading source file.");
+        let mut reader = ContentReader::new(&file_content, 12);
         let mut chunk = reader.next()
             .expect("Error reading chunk"); // "L" and upper half of "o".
         let mut expected_chunk_vec = "Lo".to_owned().into_bytes();
@@ -517,8 +525,7 @@ mod tests {
         let file_content = FileContent::new(source_path.to_str()
             .expect("Source file name contains odd characters."))
             .expect("Error getting file contents");
-        let reader = ContentReader::new(&file_content, chunk_size)
-            .expect("There was a problem reading source file.");
+        let reader = ContentReader::new(&file_content, chunk_size);
         // Destination file setup.
         let destination_file_name_path = test_env.path().join("output.txt").into_os_string().into_string()
             .expect("Error reading destination file name. Unsupported character might have been used.");
@@ -651,7 +658,7 @@ mod tests {
             let remainder2 = Chunk::new(0b_11, 2, 1);
             let expected_result = 0b_1011_1_000_u8;
             destination_writer.pending_data = Some(remainder1);
-            if let Some(_) = destination_writer.store_remainder(&remainder2) {
+            if let Ok(Some(_)) = destination_writer.store_remainder(&remainder2) {
                 assert!(false, "A complete byte was returned when no remainder fill was expected.");
             } else {
                 if let Some(remainder) = &destination_writer.pending_data {
@@ -669,7 +676,7 @@ mod tests {
             let expected_result = 0b_11_00_0000_u8;
             let expected_complete_byte = 0b_1010_1110_u8;
             destination_writer.pending_data = Some(remainder1);
-            if let Some(complete_byte) = destination_writer.store_remainder(&remainder2){
+            if let Ok(Some(complete_byte)) = destination_writer.store_remainder(&remainder2){
                 if let Some(remainder) = &destination_writer.pending_data {
                     assert_eq!(expected_result, remainder.data,
                                "Store remainder with overflow did not worked as we expected. \
@@ -690,7 +697,7 @@ mod tests {
             let remainder2 = Chunk::new(0b_0, 1, 1);
             let expected_complete_byte = 0b_1010_1110_u8;
             destination_writer.pending_data = Some(remainder1);
-            if let Some(complete_byte) = destination_writer.store_remainder(&remainder2){
+            if let Ok(Some(complete_byte)) = destination_writer.store_remainder(&remainder2){
                 if let Some(remainder) = &destination_writer.pending_data {
                     assert!(false, "We expected no remainder but one found instead. Found remainder \
                         has data {:#b} a length {}",

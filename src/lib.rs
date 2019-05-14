@@ -4,13 +4,16 @@ pub mod configuration;
 pub mod fileio;
 pub mod stegimage;
 
-//use std::error::Error;
 use std::fs::metadata;
-use std::io::Result;
+
+use error_chain::{error_chain, bail};
 
 use crate::configuration::Configuration;
 use crate::fileio::{FileContent, ContentReader, FileWriter};
 use crate::stegimage::ContainerImage;
+
+// This will create the Error, ErrorKind, ResultExt, and Result types.
+error_chain!{}
 
 /// Main function in steganer. It runs its main logic.
 pub fn _run(config: &Configuration) -> Result<()> {
@@ -38,7 +41,7 @@ pub fn extract_from_image(hidden_file: &str, host_file: &str)-> Result<()> {
     let mut host_image = ContainerImage::new(host_file);
     host_image.setup_hidden_data_extraction();
     let mut extracted_file = FileWriter::new(hidden_file)
-        .expect("Error creating destination file for extracted data");
+        .chain_err(||"Error creating destination file to store extracted data")?;
     for chunk in host_image {
         extracted_file.write(&chunk);
     }
@@ -52,17 +55,16 @@ pub fn extract_from_image(hidden_file: &str, host_file: &str)-> Result<()> {
 /// * host_file: Absolute path to image file that contains hidden file.
 pub fn hide_into_image(file_to_hide: &str, host_file: &str)-> Result<()> {
     let file_to_hide_content = FileContent::new(file_to_hide)
-        .expect("Error reading file to hide content.");
+        .chain_err(||"Error creating file to hide content handle.")?;
     let file_to_hide_size = metadata(file_to_hide)
-        .expect("Error accessing file to hide metadata.")
+        .chain_err(||"Error accessing file to hide metadata.")?
         .len();
     if file_to_hide_size > std::u32::MAX as u64 {
-        panic!("File to hide is too big. Maximum size is {}", std::u32::MAX);
+        bail!("File to hide is too big. Maximum size is {}", std::u32::MAX);
     } else {
         let mut host_image = ContainerImage::new(host_file);
         let chunk_size = host_image.setup_hiding(file_to_hide_size as u32);
-        let file_to_hide_reader = ContentReader::new(&file_to_hide_content, chunk_size)
-            .expect("Error getting an iterator to file to hide content.");
+        let file_to_hide_reader = ContentReader::new(&file_to_hide_content, chunk_size);
         for chunk in file_to_hide_reader {
             host_image.hide_data(&chunk);
         }
