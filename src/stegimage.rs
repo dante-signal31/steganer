@@ -86,6 +86,7 @@ pub struct ContainerImage <'a> {
 impl <'a> ContainerImage <'a>{
     #[must_use]
     pub fn new(file_pathname: &'a str)-> Self {
+        // TODO: Use supported_image() to check file_pathname is valid.
         let image = image::open(file_pathname)
             .expect("Something wrong happened opening given image");
         let (width, height) = image.dimensions();
