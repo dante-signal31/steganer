@@ -4,16 +4,47 @@
 /// * PNG
 /// * GIF
 /// * BMP
-/// * ICO
 /// * PNM
+/// * TIFF
 use std::fmt;
 use std::iter::Iterator;
 use image::{DynamicImage, GenericImageView};
+
+use crate::*;
 use crate::bytetools::{mask, u24_to_bytes, bytes_to_u24};
 use crate::fileio::Chunk;
 
 const HEADER_PIXEL_LENGTH: u8 = 32;
 const SIZE_LENGTH: u8 = 32;
+const SUPPORTED_EXTENSIONS: [&str; 6] = ["png", "gif", "bmp", "pnm", "tif", "tiff"];
+
+/// Check if this file is supported as a valid host image.
+///
+/// Actually this function only check image as a valid extension. Valid extensions for
+/// image file are in this module *SUPPORTED_EXTENSIONS* const list.
+///
+/// # Parameters:
+/// * filename: Hos image filename. It mus include an extension.
+///
+/// # Returns:
+/// * True if this images type is supported and false if not.
+/// * Can raise an error if we can not get file extension.
+fn supported_image(filename: &str)-> Result<bool> {
+    if filename.contains("."){
+        let extension: &str = match (filename.split(".").collect::<Vec<&str>>()).last() {
+            Some(ext)=> ext,
+            None=> bail!("Error getting image extension.")
+        };
+        let normalized_extension = extension.to_lowercase();
+        if SUPPORTED_EXTENSIONS.contains(&normalized_extension.as_str()) {
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    } else {
+        bail!("Error: host file has no extension to check it is supported.")
+    }
+}
 
 /// Helper type to store Pixels positions.
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
@@ -105,7 +136,8 @@ impl <'a> ContainerImage <'a>{
         let usable_pixels_amount = (self.height * self.width) - HEADER_PIXEL_LENGTH as u32;
         let total_data_size_in_bits = total_data_size * 8;
         if total_data_size_in_bits > usable_pixels_amount * 24 {
-            panic!("File to be hidden is too big for this host image.")
+            panic!("File to be hidden is too big for this host image. Current is {} bytes \
+            but maximum for this image is {} bytes", total_data_size, usable_pixels_amount * 24)
         } else {
             let bits_per_pixel = (((total_data_size_in_bits) as f32) / usable_pixels_amount as f32).ceil() as u8;
             bits_per_pixel
@@ -317,6 +349,31 @@ mod tests {
         test_image.save(&test_image_path)
             .expect("Something wrong happened saving test image");
         test_image_path
+    }
+
+    #[test]
+    fn test_supported_image() {
+        // Check supported images.
+        assert!(supported_image("path/dummy.png").unwrap_or(false));
+        assert!(supported_image("path1/path2/dummy.gif").unwrap_or(false));
+        assert!(supported_image("dummy.tiff").unwrap_or(false));
+        // Check unsupported images.
+        assert!(!supported_image("dummy.jpg").unwrap_or(false));
+        assert!(!supported_image("path/dummy.ico").unwrap_or(false));
+    }
+
+    #[test]
+    fn test_support_image_with_no_extension() {
+        if let Err(ref errors) = supported_image("path/dummy"){
+            let mut error_message_found = false;
+            for (index, error) in errors.iter().enumerate(){
+                    let message: &str = error.description();
+                    if message.contains("no extension") { error_message_found = true; }
+            }
+            if !error_message_found { assert!(false) };
+        } else {
+            assert!(false);
+        }
     }
 
     #[test]
