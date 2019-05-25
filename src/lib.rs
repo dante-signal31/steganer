@@ -43,7 +43,7 @@ pub fn extract_from_image(hidden_file: &str, host_file: &str)-> Result<()> {
     let mut extracted_file = FileWriter::new(hidden_file)
         .chain_err(||"Error creating destination file to store extracted data")?;
     for chunk in host_image {
-        extracted_file.write(&chunk);
+        extracted_file.write(&chunk)?;
     }
     Ok(())
 }

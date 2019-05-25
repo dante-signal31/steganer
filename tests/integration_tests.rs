@@ -15,7 +15,7 @@ const HIDDEN_FILE: &str = "loren.txt";
 const HOST_FILE_NAME_SUFFIX: &str = "Lenna_(test_image)";
 const CORRECT_TESTED_EXTENSIONS: [&str; 3] = ["png", "bmp", "ppm"];
 const INCORRECT_TESTED_EXTENSIONS: [&str; 2] = ["jpg", "tga"];
-const HOST_FILE: &str = "Lenna_(test_image).png";
+//const HOST_FILE: &str = "Lenna_(test_image).png";
 const FILE_RECOVERED: &str = "lenna_recovered.txt";
 
 struct TestImages<'a>  {

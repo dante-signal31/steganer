@@ -1,9 +1,7 @@
 extern crate steganer;
 
-use steganer::*;
 use steganer::argparser::parse_arguments;
 use steganer::_run;
-
 
 fn main() {
     let config = parse_arguments();

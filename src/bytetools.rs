@@ -1,8 +1,7 @@
 /// Module to perform byte operations.
 use std::mem::size_of;
-use num::{Integer, PrimInt};
-use num::pow::Pow;
-use std::ops::{BitAnd, Shl, Shr, ShlAssign, BitOr, Not};
+use num::Integer;
+use std::ops::{BitAnd, Shl, Shr, BitOr, Not};
 use std::fmt::Debug;
 
 /// Convert 3 bytes to a 24 bits long integer.

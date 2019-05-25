@@ -27,12 +27,13 @@ use std::fmt::{Debug, Formatter};
 use std::fs::File;
 // Write import gets a compiler warning. It warns about importing Write is useless but actually
 // if I remove Write import I get a compiler error in this module code.
-use std::io::{BufReader, Read, Write, Error};
+use std::io::{BufReader, Read, Write};
 use std::iter::Iterator;
 use std::ops::Add;
 // Pathbuf import gets a compiler warning. It warns about importing PathBuf is useless but actually
 // if I remove PathBuf import I get a compiler error in this module code.
 use std::path::PathBuf;
+
 
 use bitreader::{BitReader, BitReaderError};
 
@@ -469,7 +470,7 @@ mod tests {
     #[test]
     // Test iteration with chunks bigger than 8 bits.
     fn test_iterator_next_over_8() {
-        let ( source_path,test_env) = get_temporary_test_file();
+        let ( source_path,_test_env) = get_temporary_test_file();
         let file_content = FileContent::new(source_path.to_str()
             .expect("Source file name contains odd characters."))
             .expect("Error getting file contents");
@@ -536,7 +537,8 @@ mod tests {
                 .expect("Error happened trying to created FileWriter type.");
             // Transferring chunks.
             for chunk in reader {
-                destination_writer.write(&chunk);
+                destination_writer.write(&chunk)
+                    .expect("Error happened writing chunk.");
             }
         }
         // Test destination file has same content than source file.

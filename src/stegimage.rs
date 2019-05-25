@@ -267,6 +267,8 @@ impl <'a> ContainerImage <'a>{
         Position{x, y}
     }
 
+    // Compiler warns that this function is not used. But I've checked that it is
+    // actually used indeed.
     fn get_image(&mut self)-> &mut DynamicImage {
         &mut self.image
     }
@@ -369,7 +371,7 @@ mod tests {
     fn test_support_image_with_no_extension() {
         if let Err(ref errors) = supported_image("path/dummy"){
             let mut error_message_found = false;
-            for (index, error) in errors.iter().enumerate(){
+            for (_, error) in errors.iter().enumerate(){
                     let message: &str = error.description();
                     if message.contains("no extension") { error_message_found = true; }
             }
@@ -381,7 +383,7 @@ mod tests {
 
     #[test]
     fn test_get_chunk_size() {
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         // Temporary test image has 512x512 = 262.144 pixels.
@@ -397,7 +399,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_get_chunk_size_file_too_big() {
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         // Temporary test image has 512x512 = 262.144 pixels.
@@ -405,13 +407,13 @@ mod tests {
         // 262.144 - HEADER_PIXEL_LENGTH to hide data = 262.112 pixels.
         // Every pixel can hide up to 24 bits os hidden data, so this
         // image can hide up to 6.290.688 bits = 786.336 bytes.
-        let chunk_size = container.get_chunk_size(800000);
+        let _ = container.get_chunk_size(800000);
     }
 
     #[test]
     fn test_encode_header() {
         let encoded_size: u32 = 33;
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_header(encoded_size);
@@ -430,7 +432,7 @@ mod tests {
     #[test]
     fn test_decode_header() {
         let encoded_size: u32 = 33;
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         let bits_per_pixel = SIZE_LENGTH / HEADER_PIXEL_LENGTH;
@@ -455,7 +457,7 @@ mod tests {
     fn test_encode_less_than_8_bits() {
         let test_bits: u32 = 0b_10110;
         let test_bits_length: u8 = 5;
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_bits(test_bits, test_bits_length, 0, 0);
@@ -474,7 +476,7 @@ mod tests {
         test_bits = test_bits << 8;
         test_bits = test_bits + (expected_lower_byte as u32);
         let test_bits_length: u8 = 14;
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_bits(test_bits, test_bits_length, 0, 0);
@@ -498,7 +500,7 @@ mod tests {
             ((expected_middle_byte as u32) << 8) +
             (expected_lower_byte as u32);
         let test_bits_length: u8 = 19;
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_bits(test_bits, test_bits_length, 0, 0);
@@ -520,7 +522,7 @@ mod tests {
         let test_bits: u32 = 0b_10110;
         let expected_recovered_bits: u8 = 0b_111_10110;
         let test_bits_length: u8 = 5;
-        let (test_env, test_image_path) = create_test_image(TestColors::WHITE);
+        let (_test_env, test_image_path) = create_test_image(TestColors::WHITE);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_bits(test_bits, test_bits_length, 0, 0);
@@ -540,7 +542,7 @@ mod tests {
         test_bits = test_bits + (expected_lower_byte as u32);
         let test_bits_length: u8 = 14;
         let expected_recovered_upper_byte: u8 = 0b_11_110100;
-        let (test_env, test_image_path) = create_test_image(TestColors::WHITE);
+        let (_test_env, test_image_path) = create_test_image(TestColors::WHITE);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_bits(test_bits, test_bits_length, 0, 0);
@@ -565,7 +567,7 @@ mod tests {
             (expected_lower_byte as u32);
         let test_bits_length: u8 = 19;
         let expected_recovered_upper_byte: u8 = 0b_11111_110;
-        let (test_env, test_image_path) = create_test_image(TestColors::WHITE);
+        let (_test_env, test_image_path) = create_test_image(TestColors::WHITE);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         let mut pixel = container.get_image().get_pixel(0,0);
@@ -586,7 +588,7 @@ mod tests {
     fn test_decode_less_than_8_bits() {
         let test_bits: u32 = 0b_10110;
         let test_bits_length: u8 = 5;
-        let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
+        let (_test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
         let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         let recovered_bits = container.decode_bits( 0, 0, test_bits_length);
@@ -604,7 +606,7 @@ mod tests {
         test_bits = test_bits << 8;
         test_bits = test_bits + (expected_lower_byte as u32);
         let test_bits_length: u8 = 14;
-        let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
+        let (_test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
         let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         let recovered_bits = container.decode_bits( 0, 0, test_bits_length);
@@ -627,7 +629,7 @@ mod tests {
             ((expected_middle_byte as u32) << 8) +
             (expected_lower_byte as u32);
         let test_bits_length: u8 = 19;
-        let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
+        let (_test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
         let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         let recovered_bits = container.decode_bits( 0, 0, test_bits_length,);
@@ -653,7 +655,7 @@ mod tests {
         let expected_second_row_coordinates = Position{x: (position_second_row as u32 - test_image_width + HEADER_PIXEL_LENGTH as u32), y: 1};
         let expected_third_row_coordinates = Position{x: (position_third_row as u32 - (test_image_width * 2) + HEADER_PIXEL_LENGTH as u32), y: 2};
         // Test environment build.
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         // Tests.
@@ -678,7 +680,7 @@ mod tests {
         let position = 5_u8;
         let chunk = Chunk::new(hidden_data, hidden_data_length, position as u32);
         // Test environment build.
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         // Test:
@@ -700,7 +702,7 @@ mod tests {
         let position = 0_u8;
         let chunk = Chunk::new(hidden_data, hidden_data_length, position as u32);
         // Test environment build.
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         // Test:
@@ -730,7 +732,7 @@ mod tests {
         // I actually hide only 3 bytes per u32 so hidden file size is 3*3 instead of 3*4 bytes.
         let hidden_data_size = (3*3) as usize;
         // Build test environment.
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
             .expect("Something wrong happened converting test image path to str")).unwrap();
         // Populate test environment with hidden data.
@@ -763,7 +765,7 @@ mod tests {
     fn test_drop() {
         let dummy_size = 6363_u32;
         // Build test environment.
-        let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
+        let (_test_env, test_image_path) = create_test_image(TestColors::BLACK);
         {
             let mut container = ContainerImage::new(test_image_path.to_str()
                 .expect("Something wrong happened converting test image path to str")).unwrap();
