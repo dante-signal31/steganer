@@ -2,10 +2,8 @@
 ///
 /// It should work with any non loseless image format, currently:
 /// * PNG
-/// * GIF
 /// * BMP
-/// * PNM
-/// * TIFF
+/// * PPM
 use std::fmt;
 use std::iter::Iterator;
 use image::{DynamicImage, GenericImageView};
@@ -16,7 +14,7 @@ use crate::fileio::Chunk;
 
 const HEADER_PIXEL_LENGTH: u8 = 32;
 const SIZE_LENGTH: u8 = 32;
-const SUPPORTED_EXTENSIONS: [&str; 6] = ["png", "gif", "bmp", "pnm", "tif", "tiff"];
+const SUPPORTED_EXTENSIONS: [&str; 3] = ["png", "bmp", "ppm"];
 
 /// Check if this file is supported as a valid host image.
 ///
@@ -24,7 +22,7 @@ const SUPPORTED_EXTENSIONS: [&str; 6] = ["png", "gif", "bmp", "pnm", "tif", "tif
 /// image file are in this module *SUPPORTED_EXTENSIONS* const list.
 ///
 /// # Parameters:
-/// * filename: Hos image filename. It mus include an extension.
+/// * filename: Host image filename. It must include an extension.
 ///
 /// # Returns:
 /// * True if this images type is supported and false if not.
@@ -85,12 +83,16 @@ pub struct ContainerImage <'a> {
 
 impl <'a> ContainerImage <'a>{
     #[must_use]
-    pub fn new(file_pathname: &'a str)-> Self {
-        // TODO: Use supported_image() to check file_pathname is valid.
-        let image = image::open(file_pathname)
-            .expect("Something wrong happened opening given image");
-        let (width, height) = image.dimensions();
-        ContainerImage{image, width, height, reading_state: None, file_pathname}
+    pub fn new(file_pathname: &'a str)-> Result<Self> {
+        if let Ok(true) = supported_image(file_pathname) {
+            let image = image::open(file_pathname)
+                .expect("Something wrong happened opening given image");
+            let (width, height) = image.dimensions();
+            Ok(ContainerImage{image, width, height, reading_state: None, file_pathname})
+        } else {
+            bail!("Image type not supported.")
+        }
+
     }
 
     /// Prepare ContainerImage to host a hidden file.
@@ -356,8 +358,8 @@ mod tests {
     fn test_supported_image() {
         // Check supported images.
         assert!(supported_image("path/dummy.png").unwrap_or(false));
-        assert!(supported_image("path1/path2/dummy.gif").unwrap_or(false));
-        assert!(supported_image("dummy.tiff").unwrap_or(false));
+        assert!(supported_image("path1/path2/dummy.ppm").unwrap_or(false));
+        assert!(supported_image("dummy.bmp").unwrap_or(false));
         // Check unsupported images.
         assert!(!supported_image("dummy.jpg").unwrap_or(false));
         assert!(!supported_image("path/dummy.ico").unwrap_or(false));
@@ -381,7 +383,7 @@ mod tests {
     fn test_get_chunk_size() {
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         // Temporary test image has 512x512 = 262.144 pixels.
         // But we use first HEADER_PIXEL_LENGTH bits for header, so we can use
         // 262.144 - HEADER_PIXEL_LENGTH to hide data.
@@ -397,7 +399,7 @@ mod tests {
     fn test_get_chunk_size_file_too_big() {
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         // Temporary test image has 512x512 = 262.144 pixels.
         // But we use first HEADER_PIXEL_LENGTH bits for header, so we can use
         // 262.144 - HEADER_PIXEL_LENGTH to hide data = 262.112 pixels.
@@ -411,7 +413,7 @@ mod tests {
         let encoded_size: u32 = 33;
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_header(encoded_size);
         let mut recovered_size: u64 = 0;
         let bits_per_pixel = SIZE_LENGTH / HEADER_PIXEL_LENGTH;
@@ -430,7 +432,7 @@ mod tests {
         let encoded_size: u32 = 33;
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         let bits_per_pixel = SIZE_LENGTH / HEADER_PIXEL_LENGTH;
         for i in 0..HEADER_PIXEL_LENGTH {
             // First encode header manually.
@@ -455,7 +457,7 @@ mod tests {
         let test_bits_length: u8 = 5;
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_bits(test_bits, test_bits_length, 0, 0);
         let pixel = container.get_image().get_pixel(0,0);
         assert_eq!(pixel.data[2], test_bits as u8,
@@ -474,7 +476,7 @@ mod tests {
         let test_bits_length: u8 = 14;
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_bits(test_bits, test_bits_length, 0, 0);
         let mut pixel = container.get_image().get_pixel(0,0);
         pixel = container.get_image().get_pixel(0,0);
@@ -498,7 +500,7 @@ mod tests {
         let test_bits_length: u8 = 19;
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_bits(test_bits, test_bits_length, 0, 0);
         let mut pixel = container.get_image().get_pixel(0,0);
         pixel = container.get_image().get_pixel(0,0);
@@ -520,7 +522,7 @@ mod tests {
         let test_bits_length: u8 = 5;
         let (test_env, test_image_path) = create_test_image(TestColors::WHITE);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_bits(test_bits, test_bits_length, 0, 0);
         let pixel = container.get_image().get_pixel(0,0);
         assert_eq!(pixel.data[2], expected_recovered_bits,
@@ -540,7 +542,7 @@ mod tests {
         let expected_recovered_upper_byte: u8 = 0b_11_110100;
         let (test_env, test_image_path) = create_test_image(TestColors::WHITE);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         container.encode_bits(test_bits, test_bits_length, 0, 0);
         let mut pixel = container.get_image().get_pixel(0,0);
         pixel = container.get_image().get_pixel(0,0);
@@ -565,7 +567,7 @@ mod tests {
         let expected_recovered_upper_byte: u8 = 0b_11111_110;
         let (test_env, test_image_path) = create_test_image(TestColors::WHITE);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         let mut pixel = container.get_image().get_pixel(0,0);
         container.encode_bits(test_bits, test_bits_length, 0, 0);
         pixel = container.get_image().get_pixel(0,0);
@@ -586,7 +588,7 @@ mod tests {
         let test_bits_length: u8 = 5;
         let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
         let container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         let recovered_bits = container.decode_bits( 0, 0, test_bits_length);
         assert_eq!(test_bits, recovered_bits,
                    "Error decoding less than 8 bits. Expected {} but encoded {}",
@@ -604,7 +606,7 @@ mod tests {
         let test_bits_length: u8 = 14;
         let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
         let container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         let recovered_bits = container.decode_bits( 0, 0, test_bits_length);
         let recovered_bytes = u24_to_bytes(recovered_bits);
         assert_eq!(expected_upper_byte, recovered_bytes[1],
@@ -627,7 +629,7 @@ mod tests {
         let test_bits_length: u8 = 19;
         let (test_env, test_image_path) = create_test_image_with_custom_color(test_bits);
         let container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         let recovered_bits = container.decode_bits( 0, 0, test_bits_length,);
         let recovered_bytes = u24_to_bytes(recovered_bits);
         assert_eq!(expected_upper_byte, recovered_bytes[0],
@@ -653,7 +655,7 @@ mod tests {
         // Test environment build.
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         // Tests.
         let recovered_position_first_row = container.get_coordinates(position_first_row);
         assert_eq!(expected_first_row_coordinates, recovered_position_first_row,
@@ -678,7 +680,7 @@ mod tests {
         // Test environment build.
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         // Test:
         container.hide_data(&chunk);
         let pixel = container.get_image().get_pixel((HEADER_PIXEL_LENGTH + position) as u32, 0);
@@ -700,7 +702,7 @@ mod tests {
         // Test environment build.
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         // Test:
         container.encode_header(header);
         container.hide_data(&chunk);
@@ -730,7 +732,7 @@ mod tests {
         // Build test environment.
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         // Populate test environment with hidden data.
         let chunk_size = container.setup_hiding(hidden_data_size as u32);
         let mut position = 0_u32;
@@ -764,12 +766,12 @@ mod tests {
         let (test_env, test_image_path) = create_test_image(TestColors::BLACK);
         {
             let mut container = ContainerImage::new(test_image_path.to_str()
-                .expect("Something wrong happened converting test image path to str"));
+                .expect("Something wrong happened converting test image path to str")).unwrap();
             let _ = container.setup_hiding(dummy_size);
         } // Here container should be written to disk, with dummy_size encoded at its header, before dropping container.
         // Now try to recover encoded size.
         let mut container = ContainerImage::new(test_image_path.to_str()
-            .expect("Something wrong happened converting test image path to str"));
+            .expect("Something wrong happened converting test image path to str")).unwrap();
         container.setup_hidden_data_extraction();
         if let Some(state) = &container.reading_state {
             let extracted_size = state.hidden_file_size;
