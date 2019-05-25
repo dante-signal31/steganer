@@ -108,8 +108,8 @@ impl<'a, 'b> Add<&'b Remainder> for &'a Remainder {
             let shifted_bits_to_add = (rhs.data as u16) << (16 - self.length - rhs.length);
             let accumulated_bits = shifted_left_hand_side_bits + shifted_bits_to_add;
             let remainder_length = total_length - 8;
-            let complete_byte = ((accumulated_bits & (!mask(8, false) as u16)) >> 8) as u8;
-            let remainder_bits = (accumulated_bits & (mask(8-remainder_length, true) as u16)) as u8;
+            let complete_byte = ((accumulated_bits & (!mask::<u16>(8, false))) >> 8) as u8;
+            let remainder_bits = (accumulated_bits & (mask::<u16>(8-remainder_length, true))) as u8;
             BinaryAccumulation {
                 complete_byte: Some(complete_byte),
                 remainder: Some(Remainder::new(remainder_bits, remainder_length)),
@@ -342,7 +342,7 @@ impl FileWriter {
             } else {
                 // Remainder and entire bytes.
                 // I don't use get_bits() because I want to keep non_remainder_data left justified.
-                let non_remainder_data = data_appended_to_remainder & mask(32-non_remainder_length, true);
+                let non_remainder_data = data_appended_to_remainder & mask::<u32>(32-non_remainder_length, true);
                 Ok(Some(get_bytes(non_remainder_data, non_remainder_length)
                             // At this point we have calculated that there should be entire bytes
                             // so if get_bytes returns None then we have an error, and we use

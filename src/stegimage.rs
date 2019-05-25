@@ -157,7 +157,7 @@ impl <'a> ContainerImage <'a>{
     fn encode_header(&mut self, total_data_size: u32){
         let bits_per_pixel = SIZE_LENGTH / HEADER_PIXEL_LENGTH;
         for i in 0..HEADER_PIXEL_LENGTH {
-            let mask_for_portion = !mask(SIZE_LENGTH - bits_per_pixel, false) >> (bits_per_pixel * i);
+            let mask_for_portion = !mask::<u32>(SIZE_LENGTH - bits_per_pixel, false) >> (bits_per_pixel * i);
             let bits_portion = total_data_size & mask_for_portion;
             let bits_normalized = (bits_portion as u64) >> (bits_per_pixel * (HEADER_PIXEL_LENGTH - 1 - i));
             self.encode_bits(bits_normalized as u32, bits_per_pixel, i as u32, 0);
@@ -211,7 +211,7 @@ impl <'a> ContainerImage <'a>{
     /// Called by self.encode_bits() to get which value should have host pixel after data hidding.
     fn overwrite_pixel(rgb: &[u8], bits: u32, bits_length: u8)-> [u8; 3]{
         let original_pixel_value: u32 = ((rgb[0] as u32) << 16) + ((rgb[1] as u32) << 8) + (rgb[2] as u32);
-        let modified_pixel_value = (original_pixel_value & mask(bits_length, true)) + bits;
+        let modified_pixel_value = (original_pixel_value & mask::<u32>(bits_length, true)) + bits;
         let modified_pixel_bytes = u24_to_bytes(modified_pixel_value);
         modified_pixel_bytes
     }
@@ -241,7 +241,7 @@ impl <'a> ContainerImage <'a>{
     /// Called by self.decode_bits() to get portion of pixel data that contains hidden bits.
     fn extract_hidden_data(pixel: &[u8; 3], bits_length: u8)-> u32{
         let pixel_value = bytes_to_u24(pixel);
-        let recovered_bits = pixel_value & mask(bits_length, false);
+        let recovered_bits = pixel_value & mask::<u32>(bits_length, false);
         recovered_bits
     }
 
@@ -419,7 +419,7 @@ mod tests {
         let bits_per_pixel = SIZE_LENGTH / HEADER_PIXEL_LENGTH;
         for i in 0..HEADER_PIXEL_LENGTH {
             let pixel = container.get_image().get_pixel(i as u32,0);
-            let pixel_hidden_bits = bytes_to_u24(&[pixel[0], pixel[1], pixel[2]]) & mask(bits_per_pixel, false);
+            let pixel_hidden_bits = bytes_to_u24(&[pixel[0], pixel[1], pixel[2]]) & mask::<u32>(bits_per_pixel, false);
             recovered_size += (pixel_hidden_bits as u64) << (bits_per_pixel * (HEADER_PIXEL_LENGTH - 1 - i));
         }
         assert_eq!(recovered_size as u32, encoded_size,
@@ -441,7 +441,7 @@ mod tests {
                 .expect("Error accessing to test image")
                 .get_pixel_mut(i as u32, 0);
             let original_value = bytes_to_u24(&[pixel[0], pixel[1], pixel[2]]);
-            let modified_value = (original_value & mask(bits_per_pixel, true)) + bits;
+            let modified_value = (original_value & mask::<u32>(bits_per_pixel, true)) + bits;
             let modified_bytes = u24_to_bytes(modified_value);
             *pixel = image::Rgb([modified_bytes[0], modified_bytes[1], modified_bytes[2]]);
         }

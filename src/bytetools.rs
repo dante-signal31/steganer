@@ -1,7 +1,8 @@
 /// Module to perform byte operations.
 use std::mem::size_of;
-use num::Integer;
-use std::ops::BitAnd;
+use num::{Integer, PrimInt};
+use num::pow::Pow;
+use std::ops::{BitAnd, Shl, Shr, ShlAssign, BitOr, Not};
 use std::fmt::Debug;
 
 /// Convert 3 bytes to a 24 bits long integer.
@@ -32,9 +33,9 @@ pub fn bytes_to_u24(bytes: &[u8; 3])-> u32 {
 /// # Returns:
 /// * Array of 3 bytes.
 pub fn u24_to_bytes(int: u32)-> [u8; 3]{
-    let lower_byte = (int & mask(8, false)) as u8;
-    let middle_byte = ((int >> 8) & mask(8, false)) as u8;
-    let upper_byte = ((int >> 16) & mask(8, false)) as u8;
+    let lower_byte = (int & mask::<u32>(8, false)) as u8;
+    let middle_byte = ((int >> 8) & mask::<u32>(8, false)) as u8;
+    let upper_byte = ((int >> 16) & mask::<u32>(8, false)) as u8;
     [upper_byte, middle_byte, lower_byte]
 }
 
@@ -46,20 +47,26 @@ pub fn u24_to_bytes(int: u32)-> [u8; 3]{
 /// Every other bit is set to 1.
 ///
 /// # Returns:
-/// * A mask coded in an u32.
+/// * A mask coded in the same type that generic parameter.
 ///
 /// # Example:
 /// ```
 /// use steganer::bytetools::mask;
 ///
-/// let mask_normal = mask(3, false);
-/// assert_eq!(mask_normal, 0b_0000_0111 as u32);
+/// let mask_normal = mask::<u8>(3, false);
+/// assert_eq!(mask_normal, 0b_0000_0111 as u8);
 ///
-/// let mask_inverted = mask(3, true);
+/// let mask_inverted = mask::<u32>(3, true);
 /// assert_eq!(mask_inverted, 0b_1111_1111_1111_1111_1111_1111_1111_1000 as u32);
 /// ```
-pub fn mask(length: u8, inverted: bool)-> u32 {
-    let normal_mask: u32 = 2u32.pow(length as u32) - 1;
+pub fn mask<T>(length: u8, inverted: bool)-> T
+    where
+        T: Integer + std::convert::From<u8> + Shl<usize, Output=T> + BitOr<Output=T> + Not<Output=T> + Debug,
+{
+    let mut normal_mask = T::from(0_u8);
+    for _ in 0..length {
+        normal_mask = (normal_mask << 1 as usize) | T::from(1_u8);
+    }
     match inverted {
         true=> !normal_mask,
         false=> normal_mask,
@@ -74,26 +81,26 @@ pub fn mask(length: u8, inverted: bool)-> u32 {
 /// * length: Number o bits to get rightwards from position.
 ///
 /// # Returns:
-/// * Requested bits into a u128 type.
+/// * Requested bits into a the same type as source.
 ///
 /// # Example:
 /// ```
 /// use steganer::bytetools::get_bits;
 ///
 /// let INT: u32 = 0b_0000_0000_0110_1001_0101_1100_1110_0011_u32;
-/// let bits_u32 = get_bits(INT, 24,2) as u32;
+/// let bits_u32 = get_bits(INT, 24,2);
 /// assert_eq!(bits_u32, 0b_11u32);
 /// ```
-pub fn get_bits<T>(source: T, position: u8, length: u8)-> u128
+pub fn get_bits<T>(source: T, position: u8, length: u8)-> T
     where
-        T: Integer + Into<u128> + BitAnd<Output=T> + Debug {
-    // TODO: Refactor this. I think it's better return bits in the same type as source.
-    let left_offset = (size_of::<u128>() - size_of::<T>()) * 8;
-    let normalized_source: u128 = source.into();
-    let right_drift = (size_of::<u128>() * 8) - (left_offset + position as usize + length as usize);
-    let bit_mask = u128::from(mask(length, false)) << right_drift;
-    let extracted_bits = (normalized_source & bit_mask) >> right_drift;
+        T: Integer + From<u8> + Shl<usize, Output=T> + Shr<usize, Output=T> +
+        BitAnd<Output=T> + BitOr<Output=T> + Not<Output=T> + Debug
+{
+    let right_drift = (size_of::<T>() * 8) - (position as usize + length as usize);
+    let bit_mask = mask::<T>(length, false) << right_drift;
+    let extracted_bits = (source & bit_mask) >> right_drift;
     extracted_bits
+
 }
 
 /// Justify at top left given data.
@@ -170,12 +177,12 @@ mod tests {
 
     #[test]
     fn test_mask() {
-        let normal_mask = mask(3, false);
+        let normal_mask = mask::<u32>(3, false);
         let expected_normal_mask = 0b_0000_0111 as u32;
         assert_eq!(normal_mask, expected_normal_mask,
                    "Normal mask not properly generated. Expected mask was {:#b} but we've got {:#b}",
                    expected_normal_mask, normal_mask);
-        let inverted_mask = mask(3, true);
+        let inverted_mask = mask::<u32>(3, true);
         let expected_inverted_mask = 0b_11111111_11111111_11111111_1111_1000 as u32;
         assert_eq!(inverted_mask, expected_inverted_mask,
                    "Inverted mask not properly generated. Expected mask was {:#b} but we've got {:#b}",
