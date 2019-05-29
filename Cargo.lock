@@ -559,7 +559,7 @@ dependencies = [
  "error-chain 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "image 0.21.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "test_common 0.1.0",
+ "test_common 1.0.0",
 ]
 
 [[package]]
@@ -603,7 +603,7 @@ dependencies = [
 
 [[package]]
 name = "test_common"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "ring 0.14.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
