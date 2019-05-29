@@ -16,6 +16,8 @@ use crate::stegimage::ContainerImage;
 error_chain!{}
 
 /// Main function in steganer. It runs its main logic.
+///
+/// If you're using steganer as a library then this function is not useful for you.
 pub fn _run(config: &Configuration) -> Result<()> {
     if config.extract {
         extract_from_image(&config.hidden_file, &config.host_file)
