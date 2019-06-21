@@ -4,8 +4,7 @@ version = "1.0.0"
 authors = ["dante-signal31 <dante.signal31@gmail.com>"]
 edition = "2018"
 description = "Crate to hide a file inside another... or to recover it."
-license = "BSD-3-Clause-Attribution"
-license-file = "license.txt"
+license-file = "LICENSE"
 homepage = "https://github.com/dante-signal31/steganer"
 
 [lib]
@@ -25,4 +24,4 @@ num = "0.2.0"
 
 [dev-dependencies]
 byteorder = "1.3.1"
-test_common = {path = "test_common"}
+test_common = "1.0.1"

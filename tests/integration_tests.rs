@@ -4,7 +4,7 @@ use std::path::Path;
 
 use steganer::_run;
 use steganer::_create_configuration;
-use test_common::{copy_files, hash_file, TestEnvironment};
+use test_common::fs::{ops::copy_files, crypto::hash_file, tmp::TestEnvironment};
 
 const SOURCE_FOLDER: &str = "tests/resources/";
 const HIDDEN_FILE: &str = "loren.txt";

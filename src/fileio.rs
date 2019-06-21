@@ -380,7 +380,7 @@ mod tests {
     use std::io::{Cursor, Read};
     use byteorder::{NativeEndian, ReadBytesExt, WriteBytesExt};
 
-    use test_common::{TestEnvironment, hash_file};
+    use test_common::fs::{tmp::TestEnvironment, crypto::hash_file};
 
     const MESSAGE: &str = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, \
     sed eiusmod tempor incidunt ut labore et dolore magna aliqua.";
