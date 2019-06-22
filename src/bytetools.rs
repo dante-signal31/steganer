@@ -49,9 +49,7 @@ pub fn u24_to_bytes(int: u32)-> [u8; 3]{
 /// * A mask coded in the same type that generic parameter.
 ///
 /// # Example:
-/// ```
-/// use steganer::bytetools::mask;
-///
+/// ```ignore
 /// let mask_normal = mask::<u8>(3, false);
 /// assert_eq!(mask_normal, 0b_0000_0111 as u8);
 ///
@@ -84,8 +82,6 @@ pub fn mask<T>(length: u8, inverted: bool)-> T
 ///
 /// # Example:
 /// ```
-/// use steganer::bytetools::get_bits;
-///
 /// let INT: u32 = 0b_0000_0000_0110_1001_0101_1100_1110_0011_u32;
 /// let bits_u32 = get_bits(INT, 24,2);
 /// assert_eq!(bits_u32, 0b_11u32);
@@ -115,9 +111,7 @@ pub fn get_bits<T>(source: T, position: u8, length: u8)-> T
 /// * An array of three bytes. Returned u24 leftmost bits are returned in first byte.
 ///
 /// # Example:
-/// ```
-/// use steganer::bytetools::left_justify;
-///
+/// ```ignore
 /// let data = 0b_11_u32;
 /// let returned_data = left_justify(data, 2);
 /// assert_eq!(0b_1100_0000_u8, returned_data[0]);

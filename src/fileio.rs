@@ -6,9 +6,7 @@
 /// Conversely, FileWriter allows you write chunks of bits into a destination file.
 ///
 /// # Usage example:
-/// ```no_run
-/// use steganer::fileio::{FileContent, ContentReader, FileWriter};
-///
+/// ```ignore
 /// let file_content = FileContent::new("source_file.txt")
 ///                         .expect("Error obtaining source file content");
 /// let mut reader = ContentReader::new(&file_content, 4);

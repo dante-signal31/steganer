@@ -1,8 +1,8 @@
 pub mod argparser;
-pub mod bytetools;
-pub mod configuration;
-pub mod fileio;
-pub mod stegimage;
+mod bytetools;
+mod configuration;
+mod fileio;
+mod stegimage;
 
 use std::fs::metadata;
 
