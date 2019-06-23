@@ -5,8 +5,11 @@ mod fileio;
 mod stegimage;
 
 use std::fs::metadata;
+use std::ops::Add;
 
 use error_chain::{error_chain, bail};
+use pyo3::prelude::*;
+use pyo3::{wrap_pyfunction, PyErr, exceptions};
 
 use crate::configuration::Configuration;
 use crate::fileio::{FileContent, ContentReader, FileWriter};
@@ -50,6 +53,25 @@ pub fn extract_from_image(hidden_file: &str, host_file: &str)-> Result<()> {
     Ok(())
 }
 
+/// Exported version of extract_from_image() for python module.
+///
+/// # Parameters:
+/// * hidden_file: Absolute path to file to hide.
+/// * host_file: Absolute path to image file that is going to contain hidden file.
+#[pyfunction]
+fn unhide_from_image(hidden_file: &str, host_file: &str)-> PyResult<()> {
+    match extract_from_image(hidden_file, host_file) {
+        Ok(())=> Ok(()),
+        Err(ref errors)=> {
+            let mut message = String::new();
+            for (index, error) in errors.iter().enumerate() {
+                message = message.add(format!("\t {} --> {}", index, error).as_str());
+            }
+            Err(PyErr::new::<exceptions::IOError, _>(message))
+        },
+    }
+}
+
 /// Hide a file into into an image using steganography techniques.
 ///
 /// # Parameters:
@@ -71,5 +93,32 @@ pub fn hide_into_image(file_to_hide: &str, host_file: &str)-> Result<()> {
             host_image.hide_data(&chunk);
         }
     }
+    Ok(())
+}
+
+/// Exported version of hide_into_image() for python module.
+///
+/// # Parameters:
+/// * file_to_hide: Absolute path to hidden file.
+/// * host_file: Absolute path to image file that contains hidden file.
+#[pyfunction]
+fn hide_inside_image(file_to_hide: &str, host_file: &str)-> PyResult<()> {
+    match hide_into_image(file_to_hide, host_file) {
+        Ok(())=> Ok(()),
+        Err(ref errors)=> {
+            let mut message = String::new();
+            for (index, error) in errors.iter().enumerate() {
+                message = message.add(format!("\t {} --> {}", index, error).as_str());
+            }
+            Err(PyErr::new::<exceptions::IOError, _>(message))
+        },
+    }
+}
+
+/// Export to create a steganer python module.
+#[pymodule]
+fn steganer(py: Python, m: &PyModule)-> PyResult<()>{
+    m.add_wrapped(wrap_pyfunction!(unhide_from_image))?;
+    m.add_wrapped(wrap_pyfunction!(hide_inside_image))?;
     Ok(())
 }

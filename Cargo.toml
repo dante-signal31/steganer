@@ -10,6 +10,7 @@ homepage = "https://github.com/dante-signal31/steganer"
 [lib]
 name = "steganer"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "steganer"
@@ -21,6 +22,10 @@ clap = "2.33.0"
 error-chain = "0.12.1"
 image = "0.21.0"
 num = "0.2.0"
+
+[dependencies.pyo3]
+version = "0.7.0"
+features = ["extension-module"]
 
 [dev-dependencies]
 byteorder = "1.3.1"
