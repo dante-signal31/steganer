@@ -117,7 +117,7 @@ fn hide_inside_image(file_to_hide: &str, host_file: &str)-> PyResult<()> {
 
 /// Export to create a steganer python module.
 #[pymodule]
-fn steganer(py: Python, m: &PyModule)-> PyResult<()>{
+fn steganer(_py: Python, m: &PyModule)-> PyResult<()>{
     m.add_wrapped(wrap_pyfunction!(unhide_from_image))?;
     m.add_wrapped(wrap_pyfunction!(hide_inside_image))?;
     Ok(())
