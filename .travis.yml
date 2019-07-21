@@ -32,6 +32,8 @@ notifications:
 ################################
 # TESTING
 ################################
+before_script:
+  - cargo update
 script:
   - echo "Starting tests..."
   - cargo test --verbose
