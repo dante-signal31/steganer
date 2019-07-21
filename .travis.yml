@@ -3,7 +3,13 @@
 ################################
 language: rust
 rust:
+  - stable
   - nightly
+matrix:
+  allow_failures:
+    # I'm working with nightly, but is nice to realize when stable works too.
+    - rust: stable
+  fast_finish: true
 # Cache your dependencies so they are only recompiled if they or the compiler were upgraded
 cache: cargo
 
@@ -27,7 +33,9 @@ notifications:
 # TESTING
 ################################
 script:
+  - echo "Starting tests..."
   - cargo test --verbose
+  - echo "Tests done."
 
 ################################
 # DEPLOYMENT
