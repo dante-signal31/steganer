@@ -48,7 +48,7 @@ jobs:
     - stage: Crates.io deployment
       script:
         - echo "Deploying to crates.io..."
-        - cargo login
+        - cargo login $CARGO_TOKEN
         - cargo publish
         - echo "Crates.io deployment done."
     # Build python module an upload it to Pypi
