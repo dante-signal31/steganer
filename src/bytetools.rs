@@ -81,7 +81,7 @@ pub fn mask<T>(length: u8, inverted: bool)-> T
 /// * Requested bits into a the same type as source.
 ///
 /// # Example:
-/// ```
+/// ```ignore
 /// let INT: u32 = 0b_0000_0000_0110_1001_0101_1100_1110_0011_u32;
 /// let bits_u32 = get_bits(INT, 24,2);
 /// assert_eq!(bits_u32, 0b_11u32);
