@@ -1,0 +1,60 @@
+################################
+# GENERAL CONFIGURATION
+################################
+language: rust
+rust:
+  - nightly
+# Cache your dependencies so they are only recompiled if they or the compiler were upgraded
+cache: cargo
+
+################################
+# BRANCH FILTER
+################################
+branches:
+  only:
+  - staging
+
+################################
+# RESULT NOTIFICATIONS
+################################
+notifications:
+  recipients:
+    - dante.signal31@gmail.com
+  on_sucess: always
+  on_failure: always
+
+################################
+# TESTING
+################################
+script:
+  - cargo test --verbose
+
+################################
+# DEPLOYMENT
+################################
+jobs:
+  include:
+    # Update master branch.
+    - stage: Branch merge to production branch
+      python: 3.6
+      env:
+        - PYTHONPATH="${PYTHONPATH}:${TRAVIS_BUILD_DIR}"
+      if: branch = staging
+      script:
+        - echo "Merging staging branch with master..."
+        - ci_scripts/merge_with_production
+        - echo "Merge done."
+    # Upload packages to crates.io
+    - stage: Crates.io deployment
+      script:
+        - echo "Deploying to crates.io..."
+        - cargo login
+        - cargo publish
+        - echo "Crates.io deployment done."
+    # Build python module an upload it to Pypi
+    - stage: Python module building
+      script:
+        - echo "Deploying python module to Pypi."
+        - pip install pyo3-pack cffi
+        - pyo3-pack publish -b cffi -u $PYPI_USERNAME -p $PYPI_PASSWORD
+        - echo "Python module deployed."
