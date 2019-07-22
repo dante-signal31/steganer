@@ -52,13 +52,14 @@ jobs:
       if: branch = staging
       script:
         - echo "Merging staging branch with master..."
-        - pwd
         - python3 ci_scripts/merge_with_production
         - echo "Merge done."
     # Upload packages to crates.io
     - stage: Crates.io deployment
       script:
         - echo "Deploying to crates.io..."
+        - git checkout master
+        - git pull origin master
         - cargo login $CARGO_TOKEN
         - cargo publish
         - echo "Crates.io deployment done."
