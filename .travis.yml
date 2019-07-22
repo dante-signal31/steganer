@@ -52,6 +52,7 @@ jobs:
       if: branch = staging
       script:
         - echo "Merging staging branch with master..."
+        - pwd
         - python -m ci_scripts.merge_with_production
         - echo "Merge done."
     # Upload packages to crates.io
