@@ -58,7 +58,7 @@ jobs:
     - stage: Crates.io deployment
       script:
         - echo "Deploying to crates.io..."
-        - git fetch
+        - git fetch --all
         - git checkout master
         - git pull origin master
         - cargo login $CARGO_TOKEN
