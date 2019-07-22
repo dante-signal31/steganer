@@ -53,7 +53,7 @@ jobs:
       script:
         - echo "Merging staging branch with master..."
         - pwd
-        - python -m ci_scripts.merge_with_production
+        - python3 ci_scripts/merge_with_production
         - echo "Merge done."
     # Upload packages to crates.io
     - stage: Crates.io deployment
