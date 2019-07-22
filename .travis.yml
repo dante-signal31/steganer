@@ -45,15 +45,15 @@ script:
 jobs:
   include:
     # Update master branch.
-#    - stage: Branch merge to production branch
-#      python: 3.6
-#      env:
-#        - PYTHONPATH="${PYTHONPATH}:${TRAVIS_BUILD_DIR}"
-#      if: branch = staging
-#      script:
-#        - echo "Merging staging branch with master..."
-#        - python3 ci_scripts/merge_with_production
-#        - echo "Merge done."
+    - stage: Branch merge to production branch
+      python: 3.6
+      env:
+        - PYTHONPATH="${PYTHONPATH}:${TRAVIS_BUILD_DIR}"
+      if: branch = staging
+      script:
+        - echo "Merging staging branch with master..."
+        - python3 ci_scripts/merge_with_production
+        - echo "Merge done."
     # Upload packages to crates.io
     - stage: Crates.io deployment
       script:
