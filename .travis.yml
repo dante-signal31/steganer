@@ -59,7 +59,7 @@ jobs:
       script:
         - echo "Deploying to crates.io..."
         - git fetch --all
-        - git checkout master
+        - git checkout --track origin/master
         - git pull origin master
         - cargo login $CARGO_TOKEN
         - cargo publish
