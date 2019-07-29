@@ -67,6 +67,7 @@ jobs:
         - python
         - rust
       python: 3.6
+      rust: nightly
       script:
         - echo "Deploying python module to Pypi."
         - pip3 --version
