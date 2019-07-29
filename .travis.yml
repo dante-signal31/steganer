@@ -56,7 +56,6 @@ jobs:
         - echo "Merge done."
     # Upload packages to crates.io
     - stage: Crates.io deployment
-      if: branch = master
       script:
         - echo "Deploying to crates.io..."
         - git fetch --all
