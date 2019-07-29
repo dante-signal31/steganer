@@ -55,19 +55,16 @@ jobs:
         - python3 ci_scripts/merge_with_production
         - echo "Merge done."
     # Upload packages to crates.io
-    - stage: Crates.io deployment
-      script:
-        - echo "Deploying to crates.io..."
-        - git fetch --all
-        - git pull origin staging
-#        - git checkout master
-        - cargo login $CARGO_TOKEN
-        - cargo publish --allow-dirty
-        - echo "Crates.io deployment done."
+#    - stage: Crates.io deployment
+#      script:
+#        - echo "Deploying to crates.io..."
+#        - cargo login $CARGO_TOKEN
+#        - cargo publish --allow-dirty
+#        - echo "Crates.io deployment done."
     # Build python module an upload it to Pypi
     - stage: Python module building
       script:
         - echo "Deploying python module to Pypi."
-        - pip install pyo3-pack cffi
+        - pip install pyo3-pack cffi --user
         - pyo3-pack publish -b cffi -u $PYPI_USERNAME -p $PYPI_PASSWORD
         - echo "Python module deployed."
