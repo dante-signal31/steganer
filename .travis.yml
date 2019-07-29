@@ -62,7 +62,7 @@ jobs:
         - git pull origin staging
 #        - git checkout master
         - cargo login $CARGO_TOKEN
-        - cargo publish
+        - cargo publish --allow-dirty
         - echo "Crates.io deployment done."
     # Build python module an upload it to Pypi
     - stage: Python module building
