@@ -2,7 +2,6 @@
 # GENERAL CONFIGURATION
 ################################
 language: rust
-dist: xenial
 rust:
 #  - stable
   - nightly
