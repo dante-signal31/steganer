@@ -2,7 +2,7 @@
 # GENERAL CONFIGURATION
 ################################
 language: rust
-dist: bionic
+dist: xenial
 rust:
 #  - stable
   - nightly
