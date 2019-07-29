@@ -63,9 +63,7 @@ jobs:
 #        - echo "Crates.io deployment done."
     # Build python module an upload it to Pypi
     - stage: Python module building
-      language:
-        - python
-        - rust
+      language: python
       python: 3.6
       rust: nightly
       script:
