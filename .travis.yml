@@ -2,6 +2,7 @@
 # GENERAL CONFIGURATION
 ################################
 language: rust
+sudo: required
 rust:
 #  - stable
   - nightly
@@ -65,11 +66,10 @@ jobs:
     - stage: Python module building
       language: python
       python: 3.6
-      rust: nightly
       script:
         - echo "Deploying python module to Pypi."
-        - pip3 --version
-        - pip3 install cffi --user
-        - pip3 install pyo3-pack --user
+        - pip --version
+        - pip install cffi --user
+        - pip install pyo3-pack --user
         - pyo3-pack publish -b cffi -u $PYPI_USERNAME -p $PYPI_PASSWORD
         - echo "Python module deployed."
