@@ -64,10 +64,16 @@ jobs:
     # Build python module an upload it to Pypi
     - stage: Python module building
       language: rust
+      # I need a complete virtual machine because I cannot create a virtualenv inside
+      # default virtualenv virtual machine.
       sudo: required
 #      python: 3.6
       script:
         - echo "Deploying python module to Pypi."
+        - sudo apt-get update
+        - sudo apt-get install python3-venv
+        - python3 -m venv env3
+        - source env3/bin/activate
         - pip --version
         - pip install cffi --user
         - pip install pyo3-pack --user
