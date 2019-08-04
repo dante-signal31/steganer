@@ -2,7 +2,6 @@
 # GENERAL CONFIGURATION
 ################################
 language: rust
-sudo: required
 rust:
 #  - stable
   - nightly
@@ -64,8 +63,9 @@ jobs:
 #        - echo "Crates.io deployment done."
     # Build python module an upload it to Pypi
     - stage: Python module building
-      language: python
-      python: 3.6
+      language: rust
+      sudo: required
+#      python: 3.6
       script:
         - echo "Deploying python module to Pypi."
         - pip --version
