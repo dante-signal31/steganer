@@ -16,17 +16,20 @@ def read_configuration(configuration_file):
     yield parser
 
 
-def get_current_version(configuration_file):
+def get_current_configuration_values(configuration_file):
+    configuration_values = {}
     with read_configuration(configuration_file) as parser:
-        version = _get_value(parser, "DEFAULT", "version")
-        return version
+        configuration_values["version"] = _get_value(parser, "package", "version")
+        configuration_values["description"] = _get_value(parser, "package", "description")
+        configuration_values["values"] = _get_value(parser, "package", "homepage")
+    return configuration_values
 
 
-def get_python_version_to_package(configuration_file):
-    with read_configuration(configuration_file) as parser:
-        python_version = _get_value(parser, "DEFAULT", "python_version")
-        python_version_parts = python_version.split(".")
-        return "{}.{}".format(python_version_parts[0], python_version_parts[1])
+# def get_python_version_to_package(configuration_file):
+#     with read_configuration(configuration_file) as parser:
+#         python_version = _get_value(parser, "DEFAULT", "python_version")
+#         python_version_parts = python_version.split(".")
+#         return "{}.{}".format(python_version_parts[0], python_version_parts[1])
 
 
 def get_app_name(configuration_file):

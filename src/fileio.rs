@@ -534,7 +534,7 @@ mod tests {
             let mut destination_writer = FileWriter::new(destination_file_name_path.as_str())
                 .expect("Error happened trying to created FileWriter type.");
             // Transferring chunks.
-            for chunk in reader {
+             for chunk in reader {
                 destination_writer.write(&chunk)
                     .expect("Error happened writing chunk.");
             }

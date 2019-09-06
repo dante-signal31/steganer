@@ -62,20 +62,29 @@ jobs:
 #        - cargo publish --allow-dirty
 #        - echo "Crates.io deployment done."
     # Build python module an upload it to Pypi
-    - stage: Python module building
+#    - stage: Python module building
+#      language: rust
+#      # I need a complete virtual machine because I cannot create a virtualenv inside
+#      # default virtualenv virtual machine.
+#      sudo: required
+#      script:
+#        - echo "Deploying python module to Pypi."
+#        - sudo apt-get update
+#        - sudo apt-get install python3-venv
+#        - python3 -m venv env3
+#        - source env3/bin/activate
+#        - pip --version
+#        - pip install cffi
+#        - pip install pyo3-pack
+#        - pyo3-pack publish -b cffi -u $PYPI_USERNAME -p $PYPI_PASSWORD
+#        - echo "Python module deployed."
+    # Build Debian package and deploy it.
+    - stage: Debian packaging and deployment.
       language: rust
-      # I need a complete virtual machine because I cannot create a virtualenv inside
-      # default virtualenv virtual machine.
-      sudo: required
-#      python: 3.6
       script:
-        - echo "Deploying python module to Pypi."
-        - sudo apt-get update
-        - sudo apt-get install python3-venv
-        - python3 -m venv env3
-        - source env3/bin/activate
-        - pip --version
-        - pip install cffi
-        - pip install pyo3-pack
-        - pyo3-pack publish -b cffi -u $PYPI_USERNAME -p $PYPI_PASSWORD
-        - echo "Python module deployed."
+        - cargo install cargo-deb
+        - cargo deb
+        - python3 ci_scripts/create_bintray_descriptors_from_templates
+      deploy:
+        - provider: bintray
+          file: "packaging/steganer_deb_bintray_descriptor.json"
