@@ -21,7 +21,7 @@ def get_current_configuration_values(configuration_file):
     with read_configuration(configuration_file) as parser:
         configuration_values["version"] = _get_value(parser, "package", "version")
         configuration_values["description"] = _get_value(parser, "package", "description")
-        configuration_values["values"] = _get_value(parser, "package", "homepage")
+        configuration_values["homepage"] = _get_value(parser, "package", "homepage")
     return configuration_values
 
 
