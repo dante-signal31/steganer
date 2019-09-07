@@ -83,10 +83,10 @@ jobs:
       language: rust
       if: branch = staging
       script:
-        - ci_scripts/create_bintray_descriptors_from_templates
-        - ci_scripts/tag_release
         - cargo install cargo-deb
         - cargo deb
+        - ci_scripts/create_bintray_descriptors_from_templates
+        - ci_scripts/tag_release
       deploy:
         - provider: releases
           api_key: $GIHUB_TOKEN
