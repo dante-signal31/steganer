@@ -81,10 +81,24 @@ jobs:
     # Build Debian package and deploy it.
     - stage: Debian packaging and deployment.
       language: rust
+      if: branch = staging
       script:
         - cargo install cargo-deb
         - cargo deb
         - python3 ci_scripts/create_bintray_descriptors_from_templates
+        - python3 ci_scripts/tag_release
       deploy:
+        - provider: releases
+          api_key: $GIHUB_TOKEN
+          file_glob: true
+          file: package_dist/*
+          skip_cleanup: true
+          on:
+            all_branches: true
         - provider: bintray
-          file: "packaging/steganer_deb_bintray_descriptor.json"
+          file: "packaging/steganer_debian_bintray_descriptor.json"
+          user: $BINTRAY_USERNAME
+          key: $BINTRAY_KEY
+          skip_clanup: true
+          on:
+            all_branches: true
