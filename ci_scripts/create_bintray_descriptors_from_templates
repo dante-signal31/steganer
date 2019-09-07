@@ -1,16 +1,13 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import datetime
 import json
 import os.path
 import sys
 import traceback
-if sys.version_info.major < 3:
-    import ci_tools as tools
-    from .ci_constants import *
-else:
-    from ci_scripts import ci_tools as tools
-    from ci_scripts.ci_constants import *
+
+import ci_tools as tools
+from ci_constants import *
 
 
 def read_templates():
@@ -57,7 +54,7 @@ def create_descriptor(name, content, current_configuration_values):
 if __name__ == '__main__':
     try:
         templates = read_templates()
-        current_configuration_values= tools.get_current_version(STEGANER_CONFIGURATION)
+        current_configuration_values= tools.get_current_configuration_values(STEGANER_CONFIGURATION)
         for template_name, template_content in templates.items():
             create_descriptor(template_name, template_content, current_configuration_values)
     except:
