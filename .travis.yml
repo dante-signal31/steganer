@@ -83,7 +83,7 @@ jobs:
       language: rust
       if: branch = staging
       script:
-        - cargo install cargo-deb
+#        - cargo install cargo-deb
         - cargo deb
         - ci_scripts/create_bintray_descriptors_from_templates
         - ci_scripts/tag_release
