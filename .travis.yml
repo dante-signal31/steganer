@@ -83,7 +83,7 @@ jobs:
       language: rust
       if: branch = staging
       script:
-#        - cargo install cargo-deb
+        # Oddly it seems Travis has cargo-deb already installed, so "cargo install cargo-deb" is not needed.
         - cargo deb
         - ci_scripts/create_bintray_descriptors_from_templates
         - ci_scripts/tag_release
