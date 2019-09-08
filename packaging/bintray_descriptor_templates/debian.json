@@ -24,7 +24,7 @@
   },
 
   "files":
-  [{"includePattern": "package_dist/(.*\\.deb)", "uploadPattern": "pool/main/v/steganer/$1",
+  [{"includePattern": "target/debian/(.*\\.deb)", "uploadPattern": "pool/main/v/steganer/$1",
     "matrixParams": {
       "deb_distribution": "generic",
       "deb_component": "main",
