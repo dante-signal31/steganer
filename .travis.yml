@@ -88,13 +88,13 @@ jobs:
         - ci_scripts/create_bintray_descriptors_from_templates
         - ci_scripts/tag_release
       deploy:
-        - provider: releases
-          api_key: $GIHUB_TOKEN
-          file_glob: true
-          file: package_dist/*
-          skip_cleanup: true
-          on:
-            all_branches: true
+#        - provider: releases
+#          api_key: $GITHUB_TOKEN
+#          file_glob: true
+#          file: package_dist/*
+#          skip_cleanup: true
+#          on:
+#            all_branches: true
         - provider: bintray
           file: "packaging/steganer_debian_bintray_descriptor.json"
           user: $BINTRAY_USERNAME
