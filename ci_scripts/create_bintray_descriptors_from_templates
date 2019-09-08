@@ -42,9 +42,10 @@ def create_descriptor(name, content, current_configuration_values):
                                                                version=current_configuration_values["version"])
     content["version"]["desc"] = current_configuration_values["description"]
     content["package"]["desc"] = content["version"]["desc"]
+    content["package"]["name"] = current_configuration_values["name"]
     content["package"]["website_url"] = current_configuration_values["homepage"]
-    content["package"]["issue_tracker"] = "{website}/issues".format(website=content["package"]["website_url"])
-    content["package"]["vsc_url"] = "{website}.git".format(website=content["package"]["website_url"])
+    content["package"]["issue_tracker_url"] = "{website}/issues".format(website=content["package"]["website_url"])
+    content["package"]["vcs_url"] = "{website}.git".format(website=content["package"]["website_url"])
     content["version"]["released"] = get_current_date()
     with open(descriptor_folder_path, "w") as descriptor:
         json.dump(content, descriptor)

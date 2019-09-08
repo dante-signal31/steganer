@@ -19,6 +19,7 @@ def read_configuration(configuration_file):
 def get_current_configuration_values(configuration_file):
     configuration_values = {}
     with read_configuration(configuration_file) as parser:
+        configuration_values["name"] = _get_value(parser, "package", "name")
         configuration_values["version"] = _get_value(parser, "package", "version")
         configuration_values["description"] = _get_value(parser, "package", "description")
         configuration_values["homepage"] = _get_value(parser, "package", "homepage")
@@ -60,7 +61,7 @@ def _get_value(parser, section, parameter):
         value = parser[section][parameter]
     else:
         value = parser.get(section, parameter)
-    return value
+    return value.strip('"')
 
 
 def _get_version(parser):
