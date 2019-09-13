@@ -96,10 +96,10 @@ jobs:
           skip_cleanup: true
           on:
             all_branches: true
-#        - provider: bintray
-#          file: "packaging/steganer_debian_bintray_descriptor.json"
-#          user: "${BINTRAY_USERNAME}"
-#          key: "${BINTRAY_KEY}"
-#          skip_cleanup: true
-#          on:
-#            all_branches: true
+        - provider: bintray
+          file: "packaging/steganer_debian_bintray_descriptor.json"
+          user: "${BINTRAY_USERNAME}"
+          key: "${BINTRAY_KEY}"
+          skip_cleanup: true
+          on:
+            all_branches: true
