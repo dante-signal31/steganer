@@ -6,9 +6,9 @@ rust:
   - nightly
   - stable
 matrix:
-  allow_failures:
-    # I'm working with nightly, but is nice to realize when stable works too.
-    - rust: stable
+#  allow_failures:
+#    # I'm working with nightly, but is nice to realize when stable works too.
+#    - rust: stable
   fast_finish: true
 # Cache your dependencies so they are only recompiled if they or the compiler were upgraded
 cache: cargo
