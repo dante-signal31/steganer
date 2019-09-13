@@ -61,7 +61,7 @@ jobs:
         - cargo login $CARGO_TOKEN
         - cargo publish --allow-dirty
         - echo "Crates.io deployment done."
-     Build python module an upload it to Pypi
+    # Build python module an upload it to Pypi
     - stage: Python module building
       language: rust
       # I need a complete virtual machine because I cannot create a virtualenv inside
