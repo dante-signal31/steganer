@@ -4,7 +4,7 @@
 language: rust
 rust:
   - nightly
-  - stable
+#  - stable
 matrix:
 #  allow_failures:
 #    # I'm working with nightly, but is nice to realize when stable works too.
