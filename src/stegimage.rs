@@ -140,7 +140,7 @@ impl <'a> ContainerImage <'a>{
         let total_data_size_in_bits = total_data_size * 8;
         if total_data_size_in_bits > usable_pixels_amount * 24 {
             panic!("File to be hidden is too big for this host image. Current is {} bytes \
-            but maximum for this image is {} bytes", total_data_size, usable_pixels_amount * 24)
+            but maximum for this image is {} bytes", total_data_size, usable_pixels_amount * 24 / 8)
         } else {
             let bits_per_pixel = (((total_data_size_in_bits) as f32) / usable_pixels_amount as f32).ceil() as u8;
             bits_per_pixel
