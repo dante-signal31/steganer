@@ -28,13 +28,13 @@ hiding then you should chose another bigger image as host.
 Options
 -------
 
--h, --help
-
-:   Prints brief usage information.
-
 -x, --extract
 
 :   Run in extract mode.
+
+-h, --help
+
+:   Prints brief usage information.
 
 -V, --version
 
