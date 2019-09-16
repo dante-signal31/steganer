@@ -17,6 +17,31 @@ If not run in extract mode then you are trying to hide FILE_HIDDEN inside HOST_F
 whereas if you set extract mode then you are trying to recover FILE_HIDDEN from
 HOST_FILE.
 
+Hiding a text file example (at first text file is too big, so we compress it before hiding):
+
+    $ ls -l
+      -rw-rw-r--  1 dante dante  926839 Sep 13 20:33 genesis.txt
+      -rw-rw-r--  1 dante dante  550225 Sep 13 20:40 lena.png
+    $ steganer genesis.txt lena.png
+      thread 'main' panicked at 'File to be hidden is too big for this host image. Current is 926839 bytes but maximum for this image is 786336 bytes', src/stegimage.rs:142:13
+      note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+    $ gzip genesis.txt 
+    $ ls -l
+      -rw-rw-r--  1 dante dante  322230 Sep 13 20:33 genesis.txt.gz
+      -rw-rw-r--  1 dante dante  550225 Sep 13 20:40 lena.png
+    $ steganer genesis.txt.gz lena.png
+
+Extracting a hidden file example:
+
+    $ ls -l
+      -rw-rw-r--  1 dante dante  322230 Sep 13 20:33 genesis.txt.gz
+      -rw-rw-r--  1 dante dante  661834 Sep 16 21:47 lena.png
+    $ steganer genesis_recovered.txt.gz lena.png --extract
+    $ ls -l
+      -rw-rw-r--  1 dante dante  322230 Sep 13 20:33 genesis.txt.gz
+      -rw-rw-r--  1 dante dante  322230 Sep 16 21:49 genesis_recovered.txt.gz
+      -rw-rw-r--  1 dante dante  661834 Sep 16 21:47 lena.png
+
 Nowadays, steganer performs steganography over images (currently PNG, BMP and PPM 
 images). Method used is to store chunks of data in Least Significant Bits of image
 pixels. Only metadata steganer stores inside host images is hidden chunk size, so
