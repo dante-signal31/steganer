@@ -68,7 +68,7 @@ jobs:
       # default virtualenv virtual machine.
       sudo: required
       script:
-        - echo "Deploying python module to Pypi."
+        - echo "Deploying python module to Pypi..."
         - sudo apt-get update
         - sudo apt-get install python3-venv
         - python3 -m venv env3
@@ -83,6 +83,14 @@ jobs:
       language: rust
       if: branch = staging
       script:
+        # Build manpage.
+        - echo "Building manpage..."
+        - sudo apt-get update
+        - sudo apt-get install pandoc
+        - mkdir man
+        - pandoc --standalone --to man README.md -o man/steganer.1
+        - gzip man/steganer.1
+        - echo "Manpage built."
         # Oddly it seems Travis has cargo-deb already installed, so "cargo install cargo-deb" is not needed.
         - echo "Creating and deploying debian package"
         - cargo deb
