@@ -1,6 +1,6 @@
 [package]
 name = "steganer"
-version = "1.1.0"
+version = "1.1.0-post1"
 authors = ["dante-signal31 <dante.signal31@gmail.com>"]
 edition = "2018"
 description = "Library to hide a file inside another... or to recover it."
@@ -38,5 +38,4 @@ priority = "optional"
 assets = [
     ["target/release/steganer", "usr/bin/", "755"],
     ["README.md", "usr/share/doc/cargo-deb/", "644"],
-    ["man/steganer.1.gz", "usr/share/man/man1/", "644"],
-]
+    ["man/steganer.1.gz", "usr/share/man/man1/", "644"],]
