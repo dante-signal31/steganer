@@ -22,11 +22,19 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
 %install
 rm -rf %{buildroot}
 mkdir -p %{buildroot}
+mkdir -p %{buildroot}/usr/share/man/man1/
+mkdir -p %{buildroot}/usr/share/doc/steganer/
+cp %{buildroot}/../../../../../man/steganer.1.gz %{buildroot}/usr/share/man/man1/steganer.1.gz
+cp %{buildroot}/../../../../../README.md %{buildroot}/usr/share/doc/steganer/README.md
 cp -a * %{buildroot}
 
 %clean
 rm -rf %{buildroot}
 
 %files
+/usr/bin/steganer
+/usr/share/man/man1/steganer.1.gz
+/usr/share/doc/steganer/README.md
+
 %defattr(-,root,root,-)
 %{_bindir}/*
