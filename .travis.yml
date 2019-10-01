@@ -104,6 +104,7 @@ jobs:
         - cargo rpm build
         - echo "RPM package built."
         # Setup bintray metadata.
+        ## TODO: Update descriptors to upload rpm packages.
         - ci_scripts/create_bintray_descriptors_from_templates
         # Setup github metadata.
         - ci_scripts/tag_release
