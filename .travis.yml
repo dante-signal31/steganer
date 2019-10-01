@@ -91,10 +91,21 @@ jobs:
         - pandoc --standalone --to man README.md -o man/steganer.1
         - gzip man/steganer.1
         - echo "Manpage built."
+        # Cargo-rpm needs a previous build release. It does not hurt for cargo deb so I run cargo build release first
+        # of all.
+        - cargo build --release
+        # Build debian package.
         # Oddly it seems Travis has cargo-deb already installed, so "cargo install cargo-deb" is not needed.
         - echo "Creating and deploying debian package"
         - cargo deb
+        - echo "Debian package built."
+        # Build rpm package.
+        - echo "Creating an deploying rpm package"
+        - cargo rpm build
+        - echo "RPM package built."
+        # Setup bintray metadata.
         - ci_scripts/create_bintray_descriptors_from_templates
+        # Setup github metadata.
         - ci_scripts/tag_release
       deploy:
         - provider: releases
