@@ -39,3 +39,9 @@ assets = [
     ["target/release/steganer", "usr/bin/", "755"],
     ["README.md", "usr/share/doc/cargo-deb/", "644"],
     ["man/steganer.1.gz", "usr/share/man/man1/", "644"],]
+
+[package.metadata.rpm]
+buildflags = ["--release"]
+
+[package.metadata.rpm.targets]
+./src/bin/main = { path = "/usr/bin/./src/bin/main" }
