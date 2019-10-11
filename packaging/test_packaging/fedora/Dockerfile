@@ -11,6 +11,9 @@ RUN yum update -y && \
 RUN wget https://bintray.com/dante-signal31/rpm/rpm -O bintray-dante-signal31-rpm.repo && \
     mv bintray-dante-signal31-rpm.repo /etc/yum.repos.d/ && \
     yum update -y
+# Fedora docker image is configured to not include manpages from installed packages to save space.
+# I remove that restriction to allow steganer manpage to be properly installed.
+RUN sed -i '/tsflags=nodocs/d' /etc/dnf/dnf.conf
 #RUN yum install steganer -y
 # Prepare test bed.
 RUN wget https://homepages.cae.wisc.edu/~ece533/images/lena.png && \

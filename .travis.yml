@@ -99,7 +99,7 @@ jobs:
         - echo "Creating and deploying debian package"
         - cargo deb
         - echo "Debian package built."
-        # Build rpm package.
+        # Build Centos rpm package.
         - echo "Creating an deploying rpm package"
         - cargo rpm build
         - echo "RPM package built."
