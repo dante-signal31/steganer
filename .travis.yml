@@ -88,6 +88,8 @@ jobs:
         - sudo apt-get update
         - sudo apt-get install pandoc
         - mkdir man
+        # Remove badges strings from README to allow a clean conversion to man page.
+        - sed -i '/^\[\!\[/d' README.md
         - pandoc --standalone --to man README.md -o man/steganer.1
         - gzip man/steganer.1
         - echo "Manpage built."
