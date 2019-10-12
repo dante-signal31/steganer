@@ -3,15 +3,15 @@
 NAME
 ====
 
-**steganer** — Library to hide a file inside another... or to recover it.
+**steganer** — Library and command to hide a file inside another... or to recover it.
 
 SYNOPSIS
 ========
 
 | **steganer** FILE_HIDDEN HOST_FILE [**-x**|**--extract**] [**-h**|**--help**] [**-V**|**--version**]
 
-DESCRIPTION
-===========
+USAGE AS COMMAND
+================
 
 If not run in extract mode then you are trying to hide FILE_HIDDEN inside HOST_FILE,
 whereas if you set extract mode then you are trying to recover FILE_HIDDEN from
@@ -64,6 +64,54 @@ Options
 -V, --version
 
 :   Prints the current version number.
+
+USAGE AS LIBRARY
+================
+
+Rust
+----
+
+If you use steganer rust library (for instance from crates.io), you currently have next functions available:
+
+pub fn **extract_from_image**(hidden_file: &str, host_file: &str)-> Result<()>
+
+    Extract a file hidden into an image using steganography techniques.
+    
+    Parameters:
+        * hidden_file: Absolute path to file to hide.
+        * host_file: Absolute path to image file that is going to contain hidden file
+
+pub fn **hide_into_image**(file_to_hide: &str, host_file: &str)-> Result<()>
+
+    Hide a file into into an image using steganography techniques.
+    
+    Parameters:
+        * file_to_hide: Absolute path to hidden file.
+        * host_file: Absolute path to image file that contains hidden file.
+
+Python
+------
+
+A python module is built and uploaded to Pypi each time a new version of steganer rust library is released.
+
+If you use steganer python library (for instance from Pypi), you currently have next functions available:
+
+def **unhide_from_image**(hidden_file: str, host_file: str)-> PyResult
+
+    Exported version of extract_from_image() for python module.
+    
+    Parameters:
+        * hidden_file: Absolute path to file to hide.
+        * host_file: Absolute path to image file that is going to contain hidden file.
+
+def **hide_inside_image**(file_to_hide: str, host_file: str)-> PyResult
+
+    Exported version of hide_into_image() for python module.
+    
+    Parameters:
+        * file_to_hide: Absolute path to hidden file.
+        * host_file: Absolute path to image file that contains hidden file.
+
 
 BUGS
 ====
