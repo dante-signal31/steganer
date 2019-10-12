@@ -1,7 +1,11 @@
 % steganer(1) | steganer usage documentation
 
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/dante-signal31/steganer)](https://github.com/dante-signal31/steganer/releases)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Build Status](https://travis-ci.com/dante-signal31/steganer.svg?branch=master)](https://travis-ci.com/dante-signal31/steganer)
+[![GitHub issues](https://img.shields.io/github/issues/dante-signal31/steganer)](https://github.com/dante-signal31/steganer/issues)
+[![GitHub commit activity](https://img.shields.io/github/commit-activity/y/dante-signal31/steganer)](https://github.com/dante-signal31/steganer/commits/master)
+[![GitHub last commit](https://img.shields.io/github/last-commit/dante-signal31/steganer)](https://github.com/dante-signal31/steganer/commits/master)
 
 NAME
 ====
