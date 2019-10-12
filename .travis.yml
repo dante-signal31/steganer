@@ -4,11 +4,11 @@
 language: rust
 rust:
   - nightly
-  - stable
+#  - stable
 matrix:
-  allow_failures:
-    # I'm working with nightly, but is nice to realize when stable works too.
-    - rust: stable
+#  allow_failures:
+#    # I'm working with nightly, but it will be nice to realize when stable works too.
+#    - rust: stable
   fast_finish: true
 # Cache your dependencies so they are only recompiled if they or the compiler were upgraded
 cache: cargo
@@ -44,41 +44,41 @@ script:
 ################################
 jobs:
   include:
-    # Update master branch.
-    - stage: Branch merge to production branch
-      python: 3.6
-      env:
-        - PYTHONPATH="${PYTHONPATH}:${TRAVIS_BUILD_DIR}"
-      if: branch = staging
-      script:
-        - echo "Merging staging branch with master..."
-        - ci_scripts/merge_with_production
-        - echo "Merge done."
-    # Upload packages to crates.io
-    - stage: Crates.io deployment
-      script:
-        - echo "Deploying to crates.io..."
-        - cargo login $CARGO_TOKEN
-        - cargo publish --allow-dirty
-        - echo "Crates.io deployment done."
-    # Build python module an upload it to Pypi
-    - stage: Python module building
-      language: rust
-      # I need a complete virtual machine because I cannot create a virtualenv inside
-      # default virtualenv virtual machine.
-      sudo: required
-      script:
-        - echo "Deploying python module to Pypi..."
-        - sudo apt-get update
-        - sudo apt-get install python3-venv
-        - python3 -m venv env3
-        - source env3/bin/activate
-        - pip --version
-        - pip install cffi
-        - pip install pyo3-pack
-        - pyo3-pack publish -b cffi -u $PYPI_USERNAME -p $PYPI_PASSWORD
-        - echo "Python module deployed."
-    # Build Debian package and deploy it.
+#    # Update master branch.
+#    - stage: Branch merge to production branch
+#      python: 3.6
+#      env:
+#        - PYTHONPATH="${PYTHONPATH}:${TRAVIS_BUILD_DIR}"
+#      if: branch = staging
+#      script:
+#        - echo "Merging staging branch with master..."
+#        - ci_scripts/merge_with_production
+#        - echo "Merge done."
+#    # Upload packages to crates.io
+#    - stage: Crates.io deployment
+#      script:
+#        - echo "Deploying to crates.io..."
+#        - cargo login $CARGO_TOKEN
+#        - cargo publish --allow-dirty
+#        - echo "Crates.io deployment done."
+#    # Build python module an upload it to Pypi
+#    - stage: Python module building
+#      language: rust
+#      # I need a complete virtual machine because I cannot create a virtualenv inside
+#      # default virtualenv virtual machine.
+#      sudo: required
+#      script:
+#        - echo "Deploying python module to Pypi..."
+#        - sudo apt-get update
+#        - sudo apt-get install python3-venv
+#        - python3 -m venv env3
+#        - source env3/bin/activate
+#        - pip --version
+#        - pip install cffi
+#        - pip install pyo3-pack
+#        - pyo3-pack publish -b cffi -u $PYPI_USERNAME -p $PYPI_PASSWORD
+#        - echo "Python module deployed."
+    # Build Debian and RPM packages and deploy them.
     - stage: Debian packaging and deployment.
       language: rust
       if: branch = staging
