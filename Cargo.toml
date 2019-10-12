@@ -5,7 +5,6 @@ authors = ["dante-signal31 <dante.signal31@gmail.com>"]
 edition = "2018"
 description = "Library to hide a file inside another... or to recover it."
 license = "BSD-3-Clause"
-license-file = "LICENSE"
 homepage = "https://github.com/dante-signal31/steganer"
 readme = "README.md"
 

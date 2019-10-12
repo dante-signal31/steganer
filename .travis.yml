@@ -101,7 +101,8 @@ jobs:
         - echo "Debian package built."
         # Build rpm package.
         - echo "Building RPM package"
-        - cargo install cargo-rpm
+        - sudo apt-get install rpm
+        - cargo install cargo-rpm --force
         - cargo rpm build
         - echo "RPM package built."
         - echo "Creating metadata for deployment..."
