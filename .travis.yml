@@ -79,7 +79,7 @@ jobs:
         - pyo3-pack publish -b cffi -u $PYPI_USERNAME -p $PYPI_PASSWORD
         - echo "Python module deployed."
     # Build Debian and RPM packages and deploy them.
-    - stage: Debian packaging and deployment.
+    - stage: Debian and RPM packaging and deployment.
       language: rust
       if: branch = staging
       script:
